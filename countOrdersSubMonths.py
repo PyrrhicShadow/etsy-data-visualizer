@@ -38,7 +38,7 @@ def analyze_order_numbers():
                 
                 try:
                     parsed_date = datetime.strptime(date_str, "%A, %B %d, %Y")
-                    order_dates[order_num].append((parsed_date, parsed_date.date()))
+                    order_dates[order_num].append(parsed_date.date())
                 except ValueError as e:
                     print(f"Warning: Could not parse date '{date_str}', skipping...")
                     continue
@@ -53,11 +53,13 @@ def analyze_order_numbers():
     # Now process: for each order, find earliest date and categorize
     duplicates_found = []
     for order_num, date_list in order_dates.items():
-        if len(date_list) > 1:
+        # Check if there are ACTUALLY DIFFERENT date values (not just multiple rows)
+        unique_dates = set(date_list)
+        if len(unique_dates) > 1:
             duplicates_found.append(order_num)
         
         # Get the earliest date for this order
-        earliest_date = min(date_list, key=lambda x: x[0])[1]
+        earliest_date = min(date_list)
         day_of_month = earliest_date.day
         
         # Categorize by date range
@@ -81,15 +83,15 @@ def analyze_order_numbers():
     print(f"Total unique:   {total_unique} orders")
     
     if sum_of_ranges != total_unique:
-        print(f"\n WARNING: {sum_of_ranges - total_unique} order(s) still appear in multiple date ranges!")
+        print(f"\nWARNING: {sum_of_ranges - total_unique} order(s) still appear in multiple date ranges!")
     else:
-        print("\n✓ All counts add up correctly!")
+        print("\nAll counts add up correctly!")
     
     if duplicates_found:
-        print(f"\n{len(duplicates_found)} order(s) had multiple dates (kept earliest):")
+        print(f"\n{len(duplicates_found)} order(s) had DIFFERENT dates (kept earliest):")
         for order_num in duplicates_found:
-            dates = [d[0].strftime('%Y-%m-%d') for d in order_dates[order_num]]
-            print(f"  • {order_num}: {dates} → kept {min(dates)}")
+            unique_dates = sorted(set(order_dates[order_num]))
+            print(f"  • {order_num}: {[d.strftime('%Y-%m-%d') for d in unique_dates]} → kept {min(unique_dates).strftime('%Y-%m-%d')}")
     
     return ranges
 
