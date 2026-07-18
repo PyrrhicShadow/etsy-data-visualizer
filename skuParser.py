@@ -1,12 +1,15 @@
-# SKU Parser - Converts SKUs to human-readable descriptions (Draft 4)
+# SKU Parser - Revised (Draft 4)
 
 SKU_KEY = {
-    # == Bead styles ==
+    # == Bead styles / Design prefixes ==
     '4B': '4mm bicone beads',
     '4C': '4mm cube beads',
     '6P': '6mm pearl beads',
     '8R': '8mm round beads',
     'CHD': "children's bracelet kit beads",
+    'AETHER': 'Aether cosplay',
+    'CC-RW': 'candy cane red & white',
+    'CC-RWG': 'candy cane red, white, green',
     
     # == Pride flags ==
     'RAIN6': '6-stripe rainbow',
@@ -52,35 +55,27 @@ SKU_KEY = {
     'GYNE': 'gynesexual',
     'USA': 'American flag',
     
-    # == Color combos ==
-    'KRIS': 'Kris Dreemurr inspired',
-    'CC-RW': 'candy cane red & white',
-    'CC-RWG': 'candy cane red, white, green',
-    
     # == Findings ==
     'LV': 'leverback earring',
     'WR': 'French wire earring',
     'BP': '4mm ball post stud earring',
-    
-    # == Necklace/bracelet suffixes ==
-    'NK0': 'charm with bail only',
 }
 
+# Element variants for AETHER
+AETHER_ELEMENTS = ['ANEMO', 'GEO', 'ELECTRO', 'DENDRO', 'HYDRO', 'PYRO', 'CRYO', 'NONE', 'ALL']
+
 # Special designs without bead prefix
-SPECIAL_DESIGNS = [
-    ('HOWLS', "Howl's moving castle"),
-    ('KYO-RED', 'Kyo Soma (red)'),
-    ('KYO-BLACK', 'Kyo Soma (black)'),
-    ('SEASONS-WINTER', 'winter cottage-core'),
-    ('SEASONS-SPRING', 'spring cottage-core'),
-    ('SEASONS-SUMMER', 'summer cottage-core'),
-    ('SEASONS-FALL', 'fall cottage-core'),
-]
+SPECIAL_DESIGNS = {
+    'HOWLS': "Howl's moving castle",
+    'KYO-RED': 'Kyo Soma (red)',
+    'KYO-BLACK': 'Kyo Soma (black)',
+    'SEASONS-WINTER': 'winter cottage-core',
+    'SEASONS-SPRING': 'spring cottage-core',
+    'SEASONS-SUMMER': 'summer cottage-core',
+    'SEASONS-FALL': 'fall cottage-core',
+}
 
 TART_VALUES = {'1': 'single', '2': 'pair'}
-AETHER_ELEMENTS = {'NONE': 'none', 'ALL': 'all', 'ANEMO': 'anemo', 'GEO': 'geo', 
-                   'ELECTRO': 'electro', 'DENDRO': 'dendro', 'HYDRO': 'hydro', 
-                   'PYRO': 'pyro', 'CRYO': 'cryo'}
 
 
 def parse_sku(sku_input):
@@ -90,153 +85,162 @@ def parse_sku(sku_input):
     
     bead_style = None
     design = None
-    design_desc = None
     finding = None
-    finding_desc = None
-    numeric_suffix = None
-    element_suffix = None
+    chain_length = None
+    brace_length = None
+    element = None
     
-    # == Step 1: Check for bead prefix ==
-    bead_prefixes = ['4B', '4C', '6P', '8R', 'CHD']
+    import re
     
-    for prefix in bead_prefixes:
+    # == Step 1: Check for special standalone designs first ==
+    # TART-[n]
+    tart_match = re.match(r'^TART-(\d+)$', sku)
+    if tart_match:
+        n_val = tart_match.group(1)
+        return {
+            'sku': sku_original,
+            'formatted_description': f"Tartaglia cosplay ({TART_VALUES.get(n_val, 'unknown')})",
+        }
+    
+    # HOWLS (may have suffix like NK, WR, etc.)
+    howls_match = re.match(r'^HOWLS(?:-(.+))?$', sku)
+    if howls_match:
+        suffix = howls_match.group(1)
+        desc_parts = ["Howl's moving castle"]
+        
+        if suffix:
+            if suffix.startswith('NK'):
+                nk_match = re.match(r'NK(\d+)$', suffix)
+                if nk_match:
+                    chain_length = int(nk_match.group(1))
+                    if chain_length == 0:
+                        desc_parts.append('charm with bail only')
+                    else:
+                        desc_parts.append(f'with {chain_length}-inch chain')
+            elif suffix in ['LV', 'WR', 'BP']:
+                desc_parts.append(SKU_KEY.get(suffix, suffix.lower()))
+        
+        return {
+            'sku': sku_original,
+            'formatted_description': ' '.join(desc_parts),
+        }
+    
+    # == Step 2: Check for bead/design prefixes ==
+    # Extended prefix list including AETHER and CC- patterns
+    prefixes = ['AETHER', '4B', '4C', '6P', '8R', 'CHD']
+    
+    matched_prefix = None
+    remainder = None
+    
+    for prefix in prefixes:
         if sku.startswith(prefix + '-') or sku == prefix:
-            bead_style = prefix
+            matched_prefix = prefix
             remainder = sku[len(prefix):].strip('-')
             break
     
-    if bead_style:
-        # == Step 2: Parse remaining parts (Design-Finding or Design-Finding-Suffix) ==
+    # CC- pattern (two-part prefix like CC-RW)
+    cc_match = re.match(r'^CC-(RW|RWG)-(.+)$', sku)
+    if cc_match:
+        color = cc_match.group(1)
+        remainder = cc_match.group(2)
+        matched_prefix = f'CC-{color}'
+    elif sku.startswith('CC-'):
+        # Catch partial CC- for error messages
+        matched_prefix = sku.split('-')[0:2]  # Will fail gracefully below
+    
+    if not matched_prefix:
+        # Check for plain CC- without color
+        if sku.startswith('CC-'):
+            pass  # Will fall through to error
+        else:
+            return {'error': f'Could not parse SKU: {sku_original}. Check the SKU format.'}
+    
+    # == Step 3: Parse AETHER element ==
+    if matched_prefix == 'AETHER':
+        for elem in AETHER_ELEMENTS:
+            if remainder.startswith(elem):
+                element = elem.lower()
+                remainder = remainder[len(elem):].strip('-')
+                break
+    
+    # == Step 4: Parse remaining parts (Design-Finding or Design-Suffix) ==
+    if remainder:
         parts = remainder.split('-')
         
-        # Work backwards to find finding first
-        finding = None
+        # Find finding first (last component)
         if parts[-1] in ['LV', 'WR', 'BP']:
             finding = parts[-1]
-            finding_desc = SKU_KEY.get(finding, finding)
             parts = parts[:-1]
         
-        # Check for necklace/bracelet suffix
-        chain_len = None
-        brace_len = None
-        for i, part in enumerate(parts):
-            import re
+        # Check for necklace/bracelet suffixes anywhere in parts
+        for i, part in enumerate(parts[:]):  # Copy list to iterate safely
             nk_match = re.match(r'NK(\d+)$', part)
             if nk_match:
-                chain_len = int(nk_match.group(1))
-                numeric_suffix = ('chain_length', chain_len)
+                chain_length = int(nk_match.group(1))
                 parts[i] = None
                 continue
             
             br_match = re.match(r'BRAC\-?e?(\d+(?:\.\d+)?)$', part)
             if br_match:
-                brace_len = float(br_match.group(1))
-                numeric_suffix = ('bracelet_length', brace_len)
+                brace_length = float(br_match.group(1))
                 parts[i] = None
                 continue
         
+        # Remove None entries
         parts = [p for p in parts if p is not None]
         
-        # Remaining part should be the design/flag
+        # Join remaining as design
         if parts:
             design = '-'.join(parts)
-            design_desc = SKU_KEY.get(design, design)
     
-    else:
-        # == Step 3: Check for special designs (no bead prefix) ==
-        for code, desc in SPECIAL_DESIGNS:
-            if sku.startswith(code):
-                design = code
-                design_desc = desc
-                remainder = sku[len(code):].strip('-')
-                
-                # Parse any finding or suffix from remainder
-                if remainder:
-                    parts = remainder.split('-')
-                    
-                    # Check for finding
-                    if parts[-1] in ['LV', 'WR', 'BP']:
-                        finding = parts[-1]
-                        finding_desc = SKU_KEY.get(finding, finding)
-                        parts = parts[:-1]
-                    
-                    # Check for necklace suffix
-                    if parts:
-                        for part in parts:
-                            import re
-                            nk_match = re.match(r'NK(\d+)$', part)
-                            if nk_match:
-                                chain_len = int(nk_match.group(1))
-                                numeric_suffix = ('chain_length', chain_len)
-                                break
-        
-        # Check for TART
-        if sku.startswith('TART'):
-            import re
-            tart_match = re.match(r'TART-(\d+)$', sku)
-            if tart_match:
-                design = 'TART-' + tart_match.group(1)
-                design_desc = f"Tartaglia cosplay ({TART_VALUES.get(tart_match.group(1), 'unknown')})"
-        
-        # Check for AETHER
-        if sku.startswith('AETHER'):
-            import re
-            aether_match = re.match(r'AETHER-([A-Z]+)$', sku)
-            if aether_match:
-                element = aether_match.group(1)
-                element_suffix = element.lower()
-                design = 'AETHER-' + element
-                design_desc = f"Aether cosplay ({element_suffix})"
-                
-                # Check if there's a finding after
-                remainder = sku[aether_match.end():].strip('-')
-                if remainder and remainder in ['LV', 'WR', 'BP']:
-                    finding = remainder
-                    finding_desc = SKU_KEY.get(finding, finding)
+    # == Step 5: Build description ==
+    desc_parts = []
     
-    if not design and not bead_style:
-        return {'error': f'Could not parse SKU: {sku_original}. Check the SKU format.'}
-    
-    # == Step 4: Build description ==
-    description_parts = []
-    
-    if bead_style:
-        description_parts.append(SKU_KEY.get(bead_style, f'{bead_style} style'))
-    
-    if design_desc:
-        description_parts.append(design_desc.lower())
-    
-    if finding_desc:
-        # Insert chain info inline for necklaces
-        if numeric_suffix and numeric_suffix[0] == 'chain_length':
-            chain_val = numeric_suffix[1]
-            if chain_val == 0:
-                description_parts.append('charm with bail only')
+    # Add bead/design prefix
+    if matched_prefix:
+        if matched_prefix.startswith('CC-'):
+            desc_parts.append(SKU_KEY.get(matched_prefix, matched_prefix).lower())
+        elif matched_prefix == 'AETHER':
+            base_desc = SKU_KEY.get('AETHER', 'Aether cosplay')
+            if element:
+                desc_parts.append(f"{base_desc} ({element})")
             else:
-                description_parts[-1] += f' with {chain_val}-inch chain'
+                desc_parts.append(base_desc.lower())
         else:
-            description_parts.append(finding_desc)
-    elif numeric_suffix:
-        suffix_type, value = numeric_suffix
-        if suffix_type == 'bracelet_length':
-            if design_desc:
-                description_parts[-1] += f' bracelet ({value}-inch)'
-            else:
-                description_parts.append(f'bracelet ({value}-inch)')
+            desc_parts.append(SKU_KEY.get(matched_prefix, f'{matched_prefix} style').lower())
     
-    formatted_desc = ' '.join(description_parts)
+    # Add design (flag, color combo, etc.)
+    if design:
+        design_desc = SKU_KEY.get(design, design.lower())
+        desc_parts.append(design_desc)
+    
+    # Add finding/chain info
+    if finding:
+        finding_desc = SKU_KEY.get(finding, finding.lower())
+        # Combine with chain info if exists
+        if chain_length is not None:
+            if chain_length == 0:
+                desc_parts.append('charm with bail only')
+            else:
+                finding_desc = f"{finding_desc} with {chain_length}-inch chain"
+        desc_parts.append(finding_desc)
+    
+    # Bracelet length handling
+    if brace_length:
+        if len(desc_parts) > 0:
+            desc_parts[-1] += f' bracelet ({brace_length}-inch)'
+    
+    formatted_desc = ' '.join(desc_parts)
     
     return {
         'sku': sku_original,
-        'bead_style': bead_style,
-        'bead_style_desc': SKU_KEY.get(bead_style) if bead_style else None,
+        'bead_style': matched_prefix,
         'design': design,
-        'design_desc': design_desc,
         'finding': finding,
-        'finding_desc': finding_desc,
-        'numeric_suffix': numeric_suffix,
-        'element_suffix': element_suffix,
-        'formatted_description': formatted_desc
+        'chain_length': chain_length,
+        'brace_length': brace_length,
+        'element': element,
+        'formatted_description': formatted_desc,
     }
 
 
@@ -264,8 +268,8 @@ def main():
             print(f"\n✅ SKU: {result['sku']}")
             print(f"   {result['formatted_description']}")
             
-            if result.get('element_suffix'):
-                print(f"   Element: {result['element_suffix']}")
+            if result.get('element'):
+                print(f"   Element: {result['element']}")
             
             print()
 
