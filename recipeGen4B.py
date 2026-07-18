@@ -29,7 +29,7 @@ COLORS = [
 # Naming templates per series
 NAME_TEMPLATES = {
     '4b': '4mm {color} faceted bicone glass beads',
-    '6p': '6mm {color} round pearl glass beads',
+    '6p': '6mm {color} round plastic pearl beads',
     '8r': '8mm {color} round jelly glass beads',
     '4c': '4mm {color} faceted cube glass beads',
 }
