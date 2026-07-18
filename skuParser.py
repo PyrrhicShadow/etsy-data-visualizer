@@ -1,4 +1,4 @@
-# SKU Parser - Converts SKUs to human-readable descriptions
+# SKU Parser - Converts SKUs to human-readable descriptions (Draft 4)
 
 SKU_KEY = {
     # == Bead styles ==
@@ -12,7 +12,7 @@ SKU_KEY = {
     'RAIN6': '6-stripe rainbow',
     'RAIN7': '7-stripe rainbow',
     'RAIN8': '8-stripe rainbow',
-    'PROGPRIDE': 'progress pride',
+    'PROG': 'progress pride',
     'PHILLY': 'Philadelphia rainbow',
     'LESBO5': '5-stripe lesbian',
     'GAY5': '5-stripe gay man',
@@ -53,192 +53,191 @@ SKU_KEY = {
     'USA': 'American flag',
     
     # == Color combos ==
-    'KRIS': 'Kris Dreemurr colored',
+    'KRIS': 'Kris Dreemurr inspired',
     'CC-RW': 'candy cane red & white',
     'CC-RWG': 'candy cane red, white, green',
     
-    # == Special designs (no bead prefix) ==
-    'HOWLS': "Howl's moving castle",
-    'KYO-RED': 'Kyo Soma (red)',
-    'KYO-BLACK': 'Kyo Soma (black)',
-    'SEASONS-winter': 'winter cottage-core',
-    'SEASONS-spring': 'spring cottage-core',
-    'SEASONS-summer': 'summer cottage-core',
-    'SEASONS-fall': 'fall cottage-core',
-    
     # == Findings ==
-    'LV': 'leverback earrings',
-    'WR': 'French wire earrings',
-    'BP': '4mm ball post stud earrings',
+    'LV': 'leverback earring',
+    'WR': 'French wire earring',
+    'BP': '4mm ball post stud earring',
+    
+    # == Necklace/bracelet suffixes ==
+    'NK0': 'charm with bail only',
 }
 
-def parse_sku(sku):
+# Special designs without bead prefix
+SPECIAL_DESIGNS = [
+    ('HOWLS', "Howl's moving castle"),
+    ('KYO-RED', 'Kyo Soma (red)'),
+    ('KYO-BLACK', 'Kyo Soma (black)'),
+    ('SEASONS-WINTER', 'winter cottage-core'),
+    ('SEASONS-SPRING', 'spring cottage-core'),
+    ('SEASONS-SUMMER', 'summer cottage-core'),
+    ('SEASONS-FALL', 'fall cottage-core'),
+]
+
+TART_VALUES = {'1': 'single', '2': 'pair'}
+AETHER_ELEMENTS = {'NONE': 'none', 'ALL': 'all', 'ANEMO': 'anemo', 'GEO': 'geo', 
+                   'ELECTRO': 'electro', 'DENDRO': 'dendro', 'HYDRO': 'hydro', 
+                   'PYRO': 'pyro', 'CRYO': 'cryo'}
+
+
+def parse_sku(sku_input):
     """Parse a SKU string into its components."""
-    sku = sku.strip().upper()
+    sku_original = sku_input.strip()
+    sku = sku_input.strip().upper()
     
-    # Extract numeric suffixes for variants
+    bead_style = None
+    design = None
+    design_desc = None
+    finding = None
+    finding_desc = None
     numeric_suffix = None
     element_suffix = None
     
-    # Handle NK[n] - extract number
-    if 'NK' in sku:
-        import re
-        match = re.search(r'NK(\d+)$', sku, re.IGNORECASE)
-        if match:
-            numeric_suffix = ('chain_length', int(match.group(1)))
-            sku = sku[:-len(match.group(0))]
-    
-    # Handle BRAC[n] - extract number
-    elif 'BRAC' in sku:
-        import re
-        match = re.search(r'BRAC\-?e?(\d+(?:\.\d+)?)$', sku, re.IGNORECASE)
-        if match:
-            numeric_suffix = ('bracelet_length', float(match.group(1)))
-            sku = sku[:-len(match.group(0))]
-    
-    # Handle TART-[n] - extract number
-    if 'TART' in sku:
-        import re
-        match = re.search(r'TART\-?(\d+)$', sku, re.IGNORECASE)
-        if match:
-            numeric_suffix = ('tartaglia_pair', int(match.group(1)))
-            sku = sku.replace(match.group(0), '')
-    
-    # Handle AETHER[element] - extract element
-    if 'AETHER' in sku:
-        import re
-        match = re.search(r'AETHER\-?([A-Z]+)$', sku, re.IGNORECASE)
-        if match:
-            element_suffix = match.group(1).lower()
-            sku = sku.replace(match.group(0), '')
-    
-    # Clean up SKU for matching
-    sku_clean = sku.strip('-').upper()
-    
-    # == Parsing Logic ==
-    
-    # Check for standard format: [BeadStyle]-[Design]-[Finding]
+    # == Step 1: Check for bead prefix ==
     bead_prefixes = ['4B', '4C', '6P', '8R', 'CHD']
     
     for prefix in bead_prefixes:
-        if sku_clean.startswith(prefix + '-') or sku_clean == prefix:
-            parts = sku_clean.split('-')
-            if len(parts) >= 2:
-                bead_style = parts[0]
-                remaining = '-'.join(parts[1:])
-                
-                # Try to match finding first (last component)
-                finding = None
-                for f in ['LV', 'WR', 'BP']:
-                    if remaining.endswith(f):
-                        finding = f
-                        remaining = remaining[:-len(f)].rstrip('-')
-                        break
-                
-                # Now remaining should be the design/flag
-                design = remaining.upper()
-                
-                # Build description
-                bead_desc = SKU_KEY.get(bead_style, f'{bead_style} beads')
-                design_desc = SKU_KEY.get(design, design.lower())
-                finding_desc = SKU_KEY.get(finding, finding.lower()) if finding else ''
-                
-                return {
-                    'sku': sku,
-                    'bead_style': bead_desc,
-                    'design': design_desc,
-                    'finding': finding_desc,
-                    'numeric_suffix': numeric_suffix,
-                    'element_suffix': element_suffix,
-                    'formatted_description': format_description(bead_style, design, finding, numeric_suffix, element_suffix)
-                }
-    
-    # Check for special designs (no bead prefix)
-    special_designs = ['HOWLS', 'TART', 'KYO-RED', 'KYO-BLACK', 'SEASONS-WINTER', 
-                       'SEASONS-SPRING', 'SEASONS-SUMMER', 'SEASONS-FALL']
-    
-    for design in special_designs:
-        if sku_clean.startswith(design):
-            remaining = sku_clean[len(design):].strip('-')
-            finding = None
-            for f in ['LV', 'WR', 'BP']:
-                if remaining.endswith(f):
-                    finding = f
-                    remaining = remaining[:-len(f)].strip('-')
-                    break
-            
-            design_desc = SKU_KEY.get(design, design.lower())
-            finding_desc = SKU_KEY.get(finding, finding.lower()) if finding else ''
-            
-            return {
-                'sku': sku,
-                'bead_style': None,
-                'design': design_desc,
-                'finding': finding_desc,
-                'numeric_suffix': numeric_suffix,
-                'element_suffix': element_suffix,
-                'formatted_description': format_special_design(design, finding, numeric_suffix, element_suffix)
-            }
-    
-    return {'error': f'Could not parse SKU: {sku}. Check the SKU format.'}
-
-
-def format_description(bead_style, design, finding, numeric_suffix, element_suffix):
-    """Build a human-readable description."""
-    parts = []
+        if sku.startswith(prefix + '-') or sku == prefix:
+            bead_style = prefix
+            remainder = sku[len(prefix):].strip('-')
+            break
     
     if bead_style:
-        parts.append(SKU_KEY.get(bead_style, f'{bead_style} style'))
-    
-    if design:
-        parts.append(design)
-    
-    if element_suffix:
-        parts.append(f'{element_suffix} element')
-    
-    if finding:
-        finding_map = {
-            'LV': 'leverback earring',
-            'WR': 'wire earring',
-            'BP': 'stud earring'
-        }
-        parts.append(finding_map.get(finding, finding))
+        # == Step 2: Parse remaining parts (Design-Finding or Design-Finding-Suffix) ==
+        parts = remainder.split('-')
         
-        # Convert to singular form for readability
-        if numeric_suffix:
-            suffix_type, value = numeric_suffix
+        # Work backwards to find finding first
+        finding = None
+        if parts[-1] in ['LV', 'WR', 'BP']:
+            finding = parts[-1]
+            finding_desc = SKU_KEY.get(finding, finding)
+            parts = parts[:-1]
+        
+        # Check for necklace/bracelet suffix
+        chain_len = None
+        brace_len = None
+        for i, part in enumerate(parts):
+            import re
+            nk_match = re.match(r'NK(\d+)$', part)
+            if nk_match:
+                chain_len = int(nk_match.group(1))
+                numeric_suffix = ('chain_length', chain_len)
+                parts[i] = None
+                continue
             
-            if suffix_type == 'chain_length':
-                parts[-1] += ' with {}-inch chain'.format(value)
-            elif suffix_type == 'bracelet_length':
-                # Remove 'earring' and add bracelet info
-                parts[-2] = f"{parts[-2]} bracelet ({value}-inch)"
-                parts.pop(-1)  # Remove the finding descriptor
-    
-    return ' '.join(parts).replace('  ', ' ').strip()
-
-
-def format_special_design(design, finding, numeric_suffix, element_suffix):
-    """Build description for special designs without bead prefix."""
-    parts = [SKU_KEY.get(design, design)]
-    
-    if element_suffix:
-        parts.append(f'{element_suffix} element')
-    
-    if finding:
-        finding_map = {
-            'LV': 'leverback earring',
-            'WR': 'wire earring',
-            'BP': 'stud earring'
-        }
-        parts.append(finding_map.get(finding, finding))
+            br_match = re.match(r'BRAC\-?e?(\d+(?:\.\d+)?)$', part)
+            if br_match:
+                brace_len = float(br_match.group(1))
+                numeric_suffix = ('bracelet_length', brace_len)
+                parts[i] = None
+                continue
         
-        if numeric_suffix:
-            suffix_type, value = numeric_suffix
-            if suffix_type == 'chain_length':
-                parts[-1] += ' with {}-inch chain'.format(value)
+        parts = [p for p in parts if p is not None]
+        
+        # Remaining part should be the design/flag
+        if parts:
+            design = '-'.join(parts)
+            design_desc = SKU_KEY.get(design, design)
     
-    return ' '.join(parts).replace('  ', ' ').strip()
+    else:
+        # == Step 3: Check for special designs (no bead prefix) ==
+        for code, desc in SPECIAL_DESIGNS:
+            if sku.startswith(code):
+                design = code
+                design_desc = desc
+                remainder = sku[len(code):].strip('-')
+                
+                # Parse any finding or suffix from remainder
+                if remainder:
+                    parts = remainder.split('-')
+                    
+                    # Check for finding
+                    if parts[-1] in ['LV', 'WR', 'BP']:
+                        finding = parts[-1]
+                        finding_desc = SKU_KEY.get(finding, finding)
+                        parts = parts[:-1]
+                    
+                    # Check for necklace suffix
+                    if parts:
+                        for part in parts:
+                            import re
+                            nk_match = re.match(r'NK(\d+)$', part)
+                            if nk_match:
+                                chain_len = int(nk_match.group(1))
+                                numeric_suffix = ('chain_length', chain_len)
+                                break
+        
+        # Check for TART
+        if sku.startswith('TART'):
+            import re
+            tart_match = re.match(r'TART-(\d+)$', sku)
+            if tart_match:
+                design = 'TART-' + tart_match.group(1)
+                design_desc = f"Tartaglia cosplay ({TART_VALUES.get(tart_match.group(1), 'unknown')})"
+        
+        # Check for AETHER
+        if sku.startswith('AETHER'):
+            import re
+            aether_match = re.match(r'AETHER-([A-Z]+)$', sku)
+            if aether_match:
+                element = aether_match.group(1)
+                element_suffix = element.lower()
+                design = 'AETHER-' + element
+                design_desc = f"Aether cosplay ({element_suffix})"
+                
+                # Check if there's a finding after
+                remainder = sku[aether_match.end():].strip('-')
+                if remainder and remainder in ['LV', 'WR', 'BP']:
+                    finding = remainder
+                    finding_desc = SKU_KEY.get(finding, finding)
+    
+    if not design and not bead_style:
+        return {'error': f'Could not parse SKU: {sku_original}. Check the SKU format.'}
+    
+    # == Step 4: Build description ==
+    description_parts = []
+    
+    if bead_style:
+        description_parts.append(SKU_KEY.get(bead_style, f'{bead_style} style'))
+    
+    if design_desc:
+        description_parts.append(design_desc.lower())
+    
+    if finding_desc:
+        # Insert chain info inline for necklaces
+        if numeric_suffix and numeric_suffix[0] == 'chain_length':
+            chain_val = numeric_suffix[1]
+            if chain_val == 0:
+                description_parts.append('charm with bail only')
+            else:
+                description_parts[-1] += f' with {chain_val}-inch chain'
+        else:
+            description_parts.append(finding_desc)
+    elif numeric_suffix:
+        suffix_type, value = numeric_suffix
+        if suffix_type == 'bracelet_length':
+            if design_desc:
+                description_parts[-1] += f' bracelet ({value}-inch)'
+            else:
+                description_parts.append(f'bracelet ({value}-inch)')
+    
+    formatted_desc = ' '.join(description_parts)
+    
+    return {
+        'sku': sku_original,
+        'bead_style': bead_style,
+        'bead_style_desc': SKU_KEY.get(bead_style) if bead_style else None,
+        'design': design,
+        'design_desc': design_desc,
+        'finding': finding,
+        'finding_desc': finding_desc,
+        'numeric_suffix': numeric_suffix,
+        'element_suffix': element_suffix,
+        'formatted_description': formatted_desc
+    }
 
 
 def main():
@@ -263,11 +262,7 @@ def main():
             print(f"\n❌ {result['error']}\n")
         else:
             print(f"\n✅ SKU: {result['sku']}")
-            print(f"   Description: {result['formatted_description']}")
-            
-            if result.get('numeric_suffix'):
-                suffix_type, value = result['numeric_suffix']
-                print(f"   Numeric: {suffix_type} = {value}")
+            print(f"   {result['formatted_description']}")
             
             if result.get('element_suffix'):
                 print(f"   Element: {result['element_suffix']}")

@@ -58,7 +58,7 @@ BRAC-e[n] - n-inch long elastic bracelet
 
 == Misc jewelry == 
 HOWLS - Howl's moving castle jewelry 
-TART-[n] - Tartaglia cosplay earrings, n = 1 or 2 (pair) 
+TART-[1|2] - Tartaglia cosplay earrings, n = 1 or 2 (pair) 
 AETHER[element] - Single Aether cosplay earring of an element color (none, all, anemo, geo, electro, dendro, hydro, pyro, cryo) 
 KRIS - Kris Dreemurr inspired earrings 
 KYO-[RED|BLACK] - Kyo Soma inspired earrings 
