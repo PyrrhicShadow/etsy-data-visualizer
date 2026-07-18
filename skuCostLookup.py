@@ -1,48 +1,42 @@
 #!/usr/bin/env python3
 """
-Cost Calculator - Pyrrhic Silva Shop
-Input SKU → Output total/charm/finding/packaging cost breakdown
-Uses specific_units for all material cost calculations.
+Cost Calculator - Pyrrhic Silva Shop (Fixed Version)
+Uses specific_units for all calculations.
 """
 
 import csv
 import re
 from collections import defaultdict
 
-# == PACKAGING RULES ==
-# Each suffix maps to ONE packaging type (card OR bag), not both
 PACKAGING_RULES = {
-    'LV': ('earcard', 1),   # Leverback earrings
-    'WR': ('earcard', 1),   # Fish hook earrings
-    'BP': ('earcard', 1),   # Ball post studs
-    'DK': ('earcard', 1),   # Disk stud (Aether)
-    'NK': ('chaincard', 1), # Necklace with chain
-    'NK0': ('bag', 1),       # Charm only, no chain
-    'BRAC': ('chaincard', 1), # Chain bracelet/choker
-    'BRAC-e': ('chaincard', 1), # Elastic bracelet
-    'CH': ('bag', 1),        # Phone charm
-    'TART': ('earcard', 1), # TART-1 or TART-2
-    None: ('bag', 1),        # Default fallback
+    'LV': ('ear-card', 1),
+    'WR': ('ear-card', 1),
+    'BP': ('ear-card', 1),
+    'DK': ('ear-card', 1),
+    'NK': ('chain-card', 1),
+    'NK0': ('bag', 1),
+    'BRAC': ('chain-card', 1),
+    'BRAC-e': ('chain-card', 1),
+    'CH': ('bag', 1),
+    'TART': ('ear-card', 1),
+    None: ('bag', 1),
 }
 
-# == SUFFIX MULTIPLIERS ==
-# Charm and finding quantities per suffix type
 SUFFIX_MULTIPLIERS = {
     'LV': {'charm': 2, 'finding': 2},
     'WR': {'charm': 2, 'finding': 2},
     'BP': {'charm': 2, 'finding': 2},
-    'DK': {'charm': 1, 'finding': 1},  # Aether single earring
+    'DK': {'charm': 1, 'finding': 1},
     'NK': {'charm': 1, 'finding': 1},
     'NK0': {'charm': 1, 'finding': 1},
     'BRAC': {'charm': 1, 'finding': 1},
     'BRAC-e': {'charm': 1, 'finding': 1},
     'CH': {'charm': 1, 'finding': 1},
-    'TART': {'charm': 2, 'finding': 0},  # TART-2 is pair, TART-1 handled separately
+    'TART': {'charm': 2, 'finding': 0},
     None: {'charm': 1, 'finding': 0},
 }
 
 def load_inventory(filename):
-    """Load inventory with specific_units."""
     inventory = {}
     with open(filename, 'r', encoding='utf-8-sig') as f:
         reader = csv.DictReader(f)
@@ -56,7 +50,6 @@ def load_inventory(filename):
     return inventory
 
 def load_recipes(filename):
-    """Load recipes from CSV."""
     recipes = {}
     with open(filename, 'r', encoding='utf-8-sig') as f:
         for line in f:
@@ -64,7 +57,7 @@ def load_recipes(filename):
             if len(parts) < 2:
                 continue
             
-            sku = parts[0].strip()
+            sku = parts[0].strip().lower()  # Lowercase recipes
             materials = {}
             
             for cell in parts[1:]:
@@ -80,84 +73,119 @@ def load_recipes(filename):
     
     return recipes
 
-def parse_suffix(sku_upper):
-    """Extract suffix from SKU for packaging/multiplier lookup."""
-    # Find patterns: LV, WR, BP, DK, NK[n], NK0, BRAC[n], BRAC-e[n], CH, TART
+def parse_suffix(sku_lower):
+    """Extract suffix from SKU."""
+    # Handle TART specially
+    if sku_lower.startswith('tart-'):
+        return 'TART'
+    
+    # Match known suffix patterns at the end of the SKU
     patterns = [
-        (r'^[^-]+-[^-]+-(LV|WR|BP|DK)$', lambda m: m.group(1)),
-        (r'^([^-]+-[^-]+-)NK(\d+)$', lambda m: f'NK{m.group(2)}'),
-        (r'^[^-]+-[^-]+-(NK0)$', lambda m: m.group(1)),
-        (r'^[^-]+-[^-]+-BRAC-e(\d+(?:\.\d+)?)$', lambda m: 'BRAC-e'),
-        (r'^[^-]+-[^-]+-BRAC(\d+(?:\.\d+)?)$', lambda m: 'BRAC'),
-        (r'^[^-]+-[^-]+-(CH)$', lambda m: m.group(1)),
-        (r'^TART-[12]$', lambda m: 'TART'),
+        r'-LV$',
+        r'-WR$',
+        r'-BP$',
+        r'-DK$',
+        r'-BK$',  # backup
+        r'-NK(\d+)$',
+        r'-NK0$',
+        r'-BRAC-e(\d+(?:\.\d+)?)$',
+        r'-BRAC(\d+(?:\.\d+)?)$',
+        r'-CH$',
     ]
     
-    for pattern, extractor in patterns:
-        match = re.search(pattern, sku_upper)
+    for pattern in patterns:
+        match = re.search(pattern, sku_lower)
         if match:
-            result = extractor(match)
-            return result
+            if pattern == r'-NK(\d+)$':
+                length = match.group(1)
+                if length == '0':
+                    return 'NK0'
+                return f'NK{length}'
+            elif pattern == r'-BRAC-e(\d+(?:\.\d+)?)$':
+                return 'BRAC-e'
+            elif pattern == r'-BRAC(\d+(?:\.\d+)?)$':
+                return 'BRAC'
+            else:
+                return match.group(0).strip('-')
+    
     return None
 
-def calculate_material_cost(material_id, quantity, inventory, unit_type='specific'):
-    """Calculate cost for a single material."""
+def strip_suffix(sku_lower, suffix):
+    """Remove suffix from SKU to get base recipe key."""
+    if suffix == 'TART':
+        return 'tart'  # TART recipe key is just 'tart'
+    
+    # Remove the suffix part from the end
+    patterns = {
+        'LV': r'-LV$',
+        'WR': r'-WR$',
+        'BP': r'-BP$',
+        'DK': r'-DK$',
+        'NK': r'-NK\d+$',
+        'NK0': r'-NK0$',
+        'BRAC': r'-BRAC\d+(?:\.\d+)?$',
+        'BRAC-e': r'-BRAC-e\d+(?:\.\d+)?$',
+        'CH': r'-CH$',
+    }
+    
+    pattern = patterns.get(suffix, r'$')
+    base = re.sub(pattern, '', sku_lower)
+    return base
+
+def calculate_material_cost(material_id, quantity, inventory):
     if material_id not in inventory:
         print(f"  ⚠️ Warning: Material {material_id} not found in inventory")
-        return 0.0
+        return 0.0, None
     
     mat = inventory[material_id]
-    divisor = mat['specific_units'] if unit_type == 'specific' else mat['total_units']
+    divisor = mat['specific_units']
     
     if divisor <= 0:
         print(f"  ⚠️ Warning: Zero units for material {material_id}")
-        return 0.0
+        return 0.0, mat
     
     cost_per_unit = mat['price'] / divisor
-    return cost_per_unit * quantity
+    return cost_per_unit * quantity, mat
 
-def calculate_chain_cost(length_inches, inventory, unit_type='specific'):
-    """Calculate chain cost prorated by length.
-    Chain material 0300 is 36 feet = 432 inches at full price."""
+def calculate_chain_cost(length_inches, inventory):
     if '0300' not in inventory:
-        return 0.0
+        return 0.0, None
     
     chain_mat = inventory['0300']
     total_inches = 36 * 12  # 432 inches
-    divisor = chain_mat['specific_units'] if unit_type == 'specific' else chain_mat['total_units']
+    divisor = chain_mat['specific_units']
     
     if divisor <= 0:
-        return 0.0
+        return 0.0, chain_mat
     
-    # Cost per inch = (price / specific_units) / total_inches
     cost_per_inch = (chain_mat['price'] / divisor) / total_inches
-    return cost_per_inch * length_inches
+    return cost_per_inch * length_inches, chain_mat
 
 def calculate_cost(sku, inventory, recipes):
-    """Calculate complete cost breakdown for an SKU."""
-    sku_upper = sku.strip().upper()
+    sku_original = sku.strip()
+    sku_lower = sku_original.lower()
     
     result = {
-        'sku': sku,
+        'sku': sku_original,
         'suffix': None,
         'charm_cost': 0.0,
         'finding_cost': 0.0,
-        'chain_cost': 0.0,
+        'combined_finding_cost': 0.0,  # finding + chain
         'packaging_cost': 0.0,
         'total_cost': 0.0,
         'breakdown': [],
     }
     
-    # 1. Parse suffix for packaging/multiplier rules
-    suffix = parse_suffix(sku_upper)
+    # 1. Parse suffix
+    suffix = parse_suffix(sku_lower)
     result['suffix'] = suffix
     result['packaging_rule'] = PACKAGING_RULES.get(suffix, PACKAGING_RULES[None])
     result['multipliers'] = SUFFIX_MULTIPLIERS.get(suffix, SUFFIX_MULTIPLIERS[None])
     
-    # 2. Handle TART specially (has its own recipe)
+    # 2. Handle TART specially
     if suffix == 'TART':
-        tart_num = 2 if '-2' in sku_upper else 1
-        result['tarts_single_pair'] = 'single' if tart_num == 1 else 'pair'
+        tart_num = 2 if '-2' in sku_lower else 1
+        result['tart_single_pair'] = 'single' if tart_num == 1 else 'pair'
         recipe_key = 'tart'
         
         if recipe_key not in recipes:
@@ -165,11 +193,12 @@ def calculate_cost(sku, inventory, recipes):
             return result
         
         materials = recipes[recipe_key]
+        charm_mult = result['multipliers']['charm']
         total = 0
+        
         for mat_id, qty in materials.items():
-            # For pair, double all materials
-            qty_multiplied = qty * result['multipliers']['charm'] if tart_num == 2 else qty
-            cost = calculate_material_cost(mat_id, qty_multiplied, inventory)
+            qty_multiplied = qty * charm_mult if tart_num == 2 else qty
+            cost, mat = calculate_material_cost(mat_id, qty_multiplied, inventory)
             total += cost
             result['breakdown'].append({
                 'category': 'charm',
@@ -178,9 +207,9 @@ def calculate_cost(sku, inventory, recipes):
                 'cost': round(cost, 4),
             })
         
-        # Packaging for TART
+        # Packaging
         pkg_id, pkg_qty = result['packaging_rule']
-        pkg_cost = calculate_material_cost(pkg_id, pkg_qty, inventory)
+        pkg_cost, _ = calculate_material_cost(pkg_id, pkg_qty, inventory)
         total += pkg_cost
         result['breakdown'].append({
             'category': 'packaging',
@@ -192,31 +221,23 @@ def calculate_cost(sku, inventory, recipes):
         result['charm_cost'] = total - pkg_cost
         result['packaging_cost'] = pkg_cost
         result['total_cost'] = total
+        result['combined_finding_cost'] = 0.0
         return result
     
-    # 3. For regular SKUs, extract charm recipe from the main portion
-    # Find matching recipe (remove suffix to get base charm recipe)
-    base_sku = sku_upper
-    for suffix_pattern in ['-LV', '-WR', '-BP', '-DK', '-NK', '-NK0', '-BRAC', '-BRAC-e', '-CH']:
-        if base_sku.endswith(suffix_pattern):
-            base_sku = base_sku[:-len(suffix_pattern)].rstrip('-')
-            break
-    
-    # Handle NK[n] patterns
-    nk_match = re.match(r'^(.+-[^-]+)-NK(\d+)$', base_sku)
-    if nk_match:
-        base_sku = nk_match.group(1)
+    # 3. Strip suffix to get base recipe key
+    base_sku = strip_suffix(sku_lower, suffix)
     
     if base_sku not in recipes:
-        result['error'] = f"No recipe found for base SKU: {base_sku}"
+        result['error'] = f"No recipe found for base SKU: {base_sku}. Tried: {base_sku}"
+        result['available_base_skus'] = [r for r in recipes.keys() if not any(re.search(p, r) for p in ['-lv$', '-wr$', '-bp$', '-dk$', '-nk', '-brac', '-ch$'])]
         return result
     
     charm_recipe = recipes[base_sku]
-    
-    # 4. Calculate charm cost (apply multiplier for earrings)
     charm_multiplier = result['multipliers']['charm']
+    
+    # 4. Calculate charm cost
     for mat_id, qty in charm_recipe.items():
-        cost = calculate_material_cost(mat_id, qty * charm_multiplier, inventory)
+        cost, _ = calculate_material_cost(mat_id, qty * charm_multiplier, inventory)
         result['charm_cost'] += cost
         result['breakdown'].append({
             'category': 'charm',
@@ -225,41 +246,38 @@ def calculate_cost(sku, inventory, recipes):
             'cost': round(cost, 4),
         })
     
-    # 5. Add chain cost for necklaces (NK[n] where n > 0)
+    # 5. Calculate chain cost (for necklaces with chain > 0)
+    chain_cost = 0.0
     if suffix and suffix.startswith('NK'):
         try:
             length = int(suffix[2:])
             if length > 0:
-                chain_cost = calculate_chain_cost(length, inventory)
+                chain_cost, chain_mat = calculate_chain_cost(length, inventory)
                 
-                # Add chain to breakdown
-                chain_mat_id = '0300'
-                chain_mat = inventory.get(chain_mat_id)
                 if chain_mat:
-                    total_inches = 36 * 12  # 432 inches
-                    cost_per_inch = (chain_mat['price'] / chain_mat['specific_units']) / total_inches
+                    total_inches = 36 * 12
                     effective_qty = length / total_inches
-                    
-                    result['chain_cost'] = chain_cost
                     result['breakdown'].append({
                         'category': 'finding',
-                        'material_id': chain_mat_id,
-                        'quantity': f"{effective_qty:.4f} of spool",
+                        'material_id': '0300',
+                        'quantity': f"{effective_qty:.4f}",
                         'cost': round(chain_cost, 4),
                         'note': f'{length}-inch chain from 36ft spool',
                     })
         except ValueError:
-            pass  # NK0 has no chain
+            pass
     
-    # 6. Calculate finding cost (jump rings, bails, closures)
+    # 6. Add finding recipe cost (bail, jump rings, closures)
     finding_recipe_key = suffix.lower() if suffix else None
+    finding_total = 0.0
+    
     if finding_recipe_key and finding_recipe_key in recipes:
         finding_recipe = recipes[finding_recipe_key]
         finding_multiplier = result['multipliers']['finding']
         
         for mat_id, qty in finding_recipe.items():
-            cost = calculate_material_cost(mat_id, qty * finding_multiplier, inventory)
-            result['finding_cost'] += cost
+            cost, _ = calculate_material_cost(mat_id, qty * finding_multiplier, inventory)
+            finding_total += cost
             result['breakdown'].append({
                 'category': 'finding',
                 'material_id': mat_id,
@@ -267,9 +285,12 @@ def calculate_cost(sku, inventory, recipes):
                 'cost': round(cost, 4),
             })
     
-    # 7. Calculate packaging cost
+    result['finding_cost'] = finding_total
+    result['combined_finding_cost'] = finding_total + chain_cost
+    
+    # 7. Packaging
     pkg_id, pkg_qty = result['packaging_rule']
-    pkg_cost = calculate_material_cost(pkg_id, pkg_qty, inventory)
+    pkg_cost, _ = calculate_material_cost(pkg_id, pkg_qty, inventory)
     result['packaging_cost'] = pkg_cost
     result['breakdown'].append({
         'category': 'packaging',
@@ -281,35 +302,32 @@ def calculate_cost(sku, inventory, recipes):
     # 8. Sum totals
     result['total_cost'] = (
         result['charm_cost'] +
-        result['finding_cost'] +
-        result['chain_cost'] +
+        result['combined_finding_cost'] +
         result['packaging_cost']
     )
     
-    # Round all costs to 4 decimals
-    result['charm_cost'] = round(result['charm_cost'], 4)
-    result['finding_cost'] = round(result['finding_cost'], 4)
-    result['chain_cost'] = round(result['chain_cost'], 4)
-    result['packaging_cost'] = round(result['packaging_cost'], 4)
-    result['total_cost'] = round(result['total_cost'], 4)
+    # Round
+    for k in ['charm_cost', 'finding_cost', 'combined_finding_cost', 'packaging_cost', 'total_cost']:
+        result[k] = round(result[k], 4)
     
     return result
 
 def format_output(result):
-    """Format cost breakdown for display."""
     if 'error' in result:
-        return f"\n❌ Error: {result['error']}\n"
+        msg = f"\n❌ Error: {result['error']}\n"
+        if 'available_base_skus' in result:
+            msg += f"Available base recipes: {', '.join(sorted(result['available_base_skus'])[:10])}\n"
+        return msg
     
     lines = [
         "=" * 60,
         f"SKU: {result['sku']}",
         "-" * 40,
-        f"Charm Cost:       ${result['charm_cost']:.4f}",
-        f"Finding Cost:     ${result['finding_cost']:.4f}",
-        f"Chain Cost:       ${result['chain_cost']:.4f}",
-        f"Packaging Cost:   ${result['packaging_cost']:.4f}",
+        f"Charm Cost:         ${result['charm_cost']:.4f}",
+        f"Finding/Chain Cost: ${result['combined_finding_cost']:.4f}",
+        f"Packaging Cost:     ${result['packaging_cost']:.4f}",
         "-" * 40,
-        f"TOTAL COST:       ${result['total_cost']:.4f}",
+        f"TOTAL COST:         ${result['total_cost']:.4f}",
         "=" * 60,
         "",
         "Breakdown:",
@@ -331,7 +349,6 @@ def main():
     print("(Uses specific_units for all calculations)")
     print("=" * 60)
     
-    # Load data
     inv_path = input("\nEnter path to InventoryData CSV (or Enter for InventoryData.csv): ").strip()
     if not inv_path:
         inv_path = 'InventoryData.csv'
@@ -348,7 +365,6 @@ def main():
     recipes = load_recipes(rec_path)
     print(f"  ✓ {len(recipes)} recipes loaded")
     
-    # Interactive mode
     print("\nEnter a SKU (or 'quit' to exit):\n")
     
     while True:
