@@ -53,15 +53,15 @@ LV - leverback earrings
 WR - French wire earrings 
 BP - 4mm ball post stud earrings 
 NK[n] - n-inch long necklace chain, 0 indicates charm with bail only 
-BRAC[n] - n-inch long chain bracelet 
+BRAC[n] - n-inch long chain bracelet or choker 
 BRAC-e[n] - n-inch long elastic bracelet
 
 == Misc jewelry == 
 HOWLS - Howl's moving castle jewelry 
-TART[n] - Tartaglia cosplay earrings, n = 1 or 2 (pair) 
-AETHER[element] - Single Aether cosplay earring of an element color 
+TART-[n] - Tartaglia cosplay earrings, n = 1 or 2 (pair) 
+AETHER[element] - Single Aether cosplay earring of an element color (none, all, anemo, geo, electro, dendro, hydro, pyro, cryo) 
 KRIS - Kris Dreemurr inspired earrings 
-KYO - Kyo Soma inspired earrings 
-SEASONS-[WINTER|SPRING|SUMMER|FALL] - Seasons cottage-core earrings 
+KYO-[RED|BLACK] - Kyo Soma inspired earrings 
+SEASONS-[winter|spring|summer|fall] - Seasons cottage-core earrings 
 USA - American flag jewelry 
-CC-[color] - candy cane with a color pattern
+CC-[color] - candy cane with a color pattern (RW - red & white, RWG - red, white, green)
