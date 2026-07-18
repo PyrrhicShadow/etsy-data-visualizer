@@ -95,6 +95,7 @@ SUFFIX_FINDINGS = {
     'LV': 'leverback earring',
     'WR': 'French wire earring',
     'BP': '4mm ball post stud earring',
+    'DK': 'earring (Aether outfit standard)'
 }
 
 # Suffix patterns for NK and BRAC
