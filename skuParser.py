@@ -144,43 +144,47 @@ def parse_sku(sku_input):
     
     # == Step 5: Parse remainder for specs ==
     if remainder:
-        # FIRST: Check for BRAC pattern (including BRAC-e-NUMBER) before splitting
-        # Match: DESIGN-BRAC[N] or DESIGN-BRAC-e[N] or DESIGN-BRAC-e-[N]
-        br_match = re.match(r'^(.+)-?BRAC[-]?e[-]?(\d+(?:\.\d+)?)$', remainder, re.IGNORECASE)
-        if br_match:
-            design_part = br_match.group(1)
-            brace_length = float(br_match.group(2))
-            brace_type = 'elastic'  # BRAC-e is elastic
-            parts = [p for p in design_part.split('-') if p]
+        # CHECK: Is remainder itself just a finding?
+        if remainder in ['LV', 'WR', 'BP']:
+            finding = remainder
+            parts = []  # No design part
         else:
-            # Check for non-elastic BRAC
-            br_match_chain = re.match(r'^(.+)-?BRAC(\d+(?:\.\d+)?)$', remainder)
-            if br_match_chain:
-                design_part = br_match_chain.group(1)
-                brace_length = float(br_match_chain.group(2))
-                brace_type = 'chain'  # BRAC alone is chain bracelet
+            # FIRST: Check for BRAC pattern
+            br_match = re.match(r'^(.+)-?BRAC[-]?e[-]?(\d+(?:\.\d+)?)$', remainder, re.IGNORECASE)
+            if br_match:
+                design_part = br_match.group(1)
+                brace_length = float(br_match.group(2))
+                brace_type = 'elastic'
                 parts = [p for p in design_part.split('-') if p]
             else:
-                # Check for NK pattern
-                nk_match = re.match(r'^(.+)-NK(\d+)$', remainder)
-                if nk_match:
-                    design_part = nk_match.group(1)
-                    chain_length = int(nk_match.group(2))
+                # Check for non-elastic BRAC
+                br_match_chain = re.match(r'^(.+)-?BRAC(\d+(?:\.\d+)?)$', remainder)
+                if br_match_chain:
+                    design_part = br_match_chain.group(1)
+                    brace_length = float(br_match_chain.group(2))
+                    brace_type = 'chain'
                     parts = [p for p in design_part.split('-') if p]
                 else:
-                    # Check for finding at the end
-                    finding_match = re.match(r'^(.+)-(LV|WR|BP)$', remainder)
-                    if finding_match:
-                        design_part = finding_match.group(1)
-                        finding = finding_match.group(2)
+                    # Check for NK pattern
+                    nk_match = re.match(r'^(.+)-NK(\d+)$', remainder)
+                    if nk_match:
+                        design_part = nk_match.group(1)
+                        chain_length = int(nk_match.group(2))
                         parts = [p for p in design_part.split('-') if p]
                     else:
-                        # No recognized suffix, entire remainder is design
-                        parts = remainder.split('-')
-        
-        # Join remaining parts as design
-        if parts:
-            design = '-'.join(parts)
+                        # Check for finding at the end (something-DASH-LV)
+                        finding_match = re.match(r'^(.+)-(LV|WR|BP)$', remainder)
+                        if finding_match:
+                            design_part = finding_match.group(1)
+                            finding = finding_match.group(2)
+                            parts = [p for p in design_part.split('-') if p]
+                        else:
+                            # No recognized suffix, entire remainder is design
+                            parts = remainder.split('-')
+    
+    # Join remaining parts as design
+    if parts:
+        design = '-'.join(parts)
     
     # == Step 6: Build description ==
     desc_parts = []
@@ -208,6 +212,8 @@ def parse_sku(sku_input):
     if finding:
         finding_desc = SKU_KEY.get(finding, finding.lower())
         desc_parts.append(finding_desc)
+        if matched_prefix is not 'AETHER': 
+            desc_parts[-1] += f's'
     
     elif chain_length is not None:
         if chain_length == 0:
