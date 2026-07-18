@@ -1,4 +1,4 @@
-# SKU Parser - Final Revision (Draft 4)
+# SKU Parser - Bug Fixed (Draft 4)
 
 SKU_KEY = {
     # == Bead styles / Design prefixes ==
@@ -92,7 +92,7 @@ def parse_sku(sku_input):
     
     import re
     
-    # == Step 1: Check for special standalone designs first ==
+    # == Step 1: Check for special standalone designs ==
     # TART-[n]
     tart_match = re.match(r'^TART-(\d+)$', sku)
     if tart_match:
@@ -109,14 +109,13 @@ def parse_sku(sku_input):
         desc_parts = ["Howl's moving castle"]
         
         if suffix:
-            if suffix.startswith('NK'):
-                nk_match = re.match(r'NK(\d+)$', suffix)
-                if nk_match:
-                    chain_length = int(nk_match.group(1))
-                    if chain_length == 0:
-                        desc_parts.append('necklace charm with bail only')
-                    else:
-                        desc_parts.append(f'necklace with {chain_length}-inch chain')
+            nk_match = re.match(r'NK(\d+)$', suffix)
+            if nk_match:
+                chain_length = int(nk_match.group(1))
+                if chain_length == 0:
+                    desc_parts.append('necklace charm with bail only')
+                else:
+                    desc_parts.append(f'necklace with {chain_length}-inch chain')
             elif suffix in ['LV', 'WR', 'BP']:
                 desc_parts.append(SKU_KEY.get(suffix, suffix.lower()))
         
@@ -160,29 +159,35 @@ def parse_sku(sku_input):
                 remainder = remainder[len(elem):].strip('-')
                 break
     
-    # == Step 4: Parse remaining parts (Design-Finding or Design-Suffix) ==
+    # == Step 4: Parse remainder for design + specs ==
     if remainder:
         parts = remainder.split('-')
         
-        # Find finding first (last component)
-        if parts[-1] in ['LV', 'WR', 'BP']:
-            finding = parts[-1]
-            parts = parts[:-1]
-        
-        # Check for necklace/bracelet suffixes anywhere in parts
+        # Check for necklace chain suffix first (NK[n])
         for i, part in enumerate(parts[:]):
+            if part is None:  # Skip None values
+                continue
             nk_match = re.match(r'NK(\d+)$', part)
             if nk_match:
                 chain_length = int(nk_match.group(1))
                 parts[i] = None
+                break
+        
+        # Check for bracelet suffix (BRAC[n] or BRAC-e[n])
+        for i, part in enumerate(parts[:]):
+            if part is None:  # Skip None values
                 continue
-            
-            # Fixed BRAC regex to handle BRAC-e[N] or BRAC[N] or BRAC-e[N]
             br_match = re.match(r'BRAC[-]?e?(\d+(?:\.\d+)?)$', part)
             if br_match:
                 brace_length = float(br_match.group(1))
                 parts[i] = None
-                continue
+                break
+        
+        # Find finding (LV/WR/BP) - check last component first
+        if not chain_length and not brace_length:
+            if parts[-1] in ['LV', 'WR', 'BP']:
+                finding = parts[-1]
+                parts = parts[:-1]
         
         # Remove None entries
         parts = [p for p in parts if p is not None]
@@ -212,29 +217,19 @@ def parse_sku(sku_input):
         design_desc = SKU_KEY.get(design, design.lower())
         desc_parts.append(design_desc)
     
-    # Add finding/chain info
+    # Add specs (finding OR chain OR bracelet)
     if finding:
         finding_desc = SKU_KEY.get(finding, finding.lower())
-        if chain_length is not None:
-            if chain_length == 0:
-                desc_parts.append('necklace charm with bail only')
-            else:
-                finding_desc = f"{finding_desc} necklace with {chain_length}-inch chain"
         desc_parts.append(finding_desc)
+    
     elif chain_length is not None:
-        # Handle necklace without finding
         if chain_length == 0:
             desc_parts.append('necklace charm with bail only')
         else:
             desc_parts.append(f'necklace with {chain_length}-inch chain')
     
-    # Bracelet length handling
-    if brace_length:
-        # Append to the last meaningful part
-        if desc_parts:
-            desc_parts[-1] = f"{desc_parts[-1]} bracelet ({brace_length}-inch)"
-        else:
-            desc_parts.append(f'bracelet ({brace_length}-inch)')
+    elif brace_length is not None:
+        desc_parts.append(f'bracelet ({brace_length}-inch)')
     
     formatted_desc = ' '.join(desc_parts)
     
@@ -273,7 +268,6 @@ def main():
         else:
             print(f"\n✅ SKU: {result['sku']}")
             print(f"   {result['formatted_description']}")
-            # REMOVED element print line
     
     print()
 
