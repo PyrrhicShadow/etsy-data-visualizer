@@ -2,7 +2,8 @@
 4B - 4mm bicone beads 
 4C - 4mm cube beads 
 6P - 6mm pearl beads 
-8R - 8mm round beads
+8R - 8mm round beads 
+CHD - children's bracelet kit beads
 
 == Pride flags == 
 RAIN6 - 6-stripe rainbow 
@@ -51,12 +52,16 @@ GYNE - gynesexual
 LV - leverback earrings 
 WR - French wire earrings 
 BP - 4mm ball post stud earrings 
-NK[n] - n-inch long necklace chain 
-BRAC - bracelet 
-BRAC-e - elastic bracelet
+NK[n] - n-inch long necklace chain, 0 indicates charm with bail only 
+BRAC[n] - n-inch long chain bracelet 
+BRAC-e[n] - n-inch long elastic bracelet
 
 == Misc jewelry == 
 HOWLS - Howl's moving castle jewelry 
 TART[n] - Tartaglia cosplay earrings, n = 1 or 2 (pair) 
-AETHER - Single Aether cosplay earring 
-KRIS - Kris Dreemurr colored earrings
+AETHER[element] - Single Aether cosplay earring of an element color 
+KRIS - Kris Dreemurr inspired earrings 
+KYO - Kyo Soma inspired earrings 
+SEASONS-[WINTER|SPRING|SUMMER|FALL] - Seasons cottage-core earrings 
+USA - American flag jewelry 
+CC-[color] - candy cane with a color pattern
