@@ -121,9 +121,11 @@ def translate_recipe(recipe, target_type, color_map, charm_map):
     return translated
 
 def generate_recipes(recipes):
-    """Generate 4C, 6P, and 8R recipes from 4B pride flag recipes."""
+    """Generate 4C, 6P, and 8R recipes from 4B recipes.
+    Only generates recipes that don't already exist in the data."""
     output = {}
     warnings = []
+    skipped = 0
     
     pride_skus = [sku for sku in recipes if sku.startswith('4b-')]
     
@@ -133,18 +135,18 @@ def generate_recipes(recipes):
         
         for target in ['4c', '6p', '8r']:
             new_sku = f"{target}-{flag_name}"
+            
+            if new_sku in recipes:
+                skipped += 1
+                continue
+            
             translated = translate_recipe(recipe, target, COLOR_MAP, CHARM_MAP)
             output[new_sku] = translated
             
             if not translated:
                 warnings.append(f"{new_sku}: empty recipe")
     
-    # Copy through all non-4B recipes
-    for sku, recipe in recipes.items():
-        if not sku.startswith('4b-'):
-            output[sku] = recipe
-    
-    return output, warnings
+    return output, warnings, skipped
 
 def write_recipes_csv(recipes, filename):
     """Write recipes to CSV in the same format as RecipesData.csv.
@@ -197,11 +199,11 @@ def main():
     print(f"  ✓ {len(recipes)} recipes loaded")
     
     # Generate
-    print("\nGenerating 6P and 8R recipes...")
-    all_recipes, warnings = generate_recipes(recipes)
+    print("\nGenerating missing 4C, 6P, and 8R recipes...")
+    all_recipes, warnings, skipped = generate_recipes(recipes)
     
-    new_count = len(all_recipes) - len(recipes)
-    print(f"  ✓ {new_count} new recipes generated")
+    print(f"  ✓ {len(all_recipes)} new recipes generated")
+    print(f"  ⊘ {skipped} recipes already existed (skipped)")
     
     # Show summary
     print("\n" + "-" * 40)
@@ -219,9 +221,11 @@ def main():
     missing_8r = ['1201', '1212', '1214', '1215']
     missing_6p = ['1401', '1402', '1403', '1404', '1405', '1406', 
                    '1407', '1408', '1409', '1410', '1412', '1413', '1414', '1415']
+    missing_4c = ['1601', '1602', '1603', '1604', '1605', '1606', 
+                   '1607', '1608', '1609', '1610', '1611', '1612', '1613', '1614', '1615']
     
     print("\n📋 Materials to add to InventoryData.csv:")
-    print("  6P pearl colors (point to box price for now):")
+    print("  6P pearl colors:")
     for mid in missing_6p:
         if mid not in inventory:
             print(f"    {mid}: 6mm [color] pearl glass beads (from box 1420)")
@@ -229,6 +233,10 @@ def main():
     for mid in missing_8r:
         if mid not in inventory:
             print(f"    {mid}: 8mm [color] round jelly glass beads")
+    print("  4C cube colors:")
+    for mid in missing_4c: 
+        if mid not in inventory: 
+            print(f"    {mid}: 6mm [color] round plastic pearl beads")
     
     # Save output as CSV
     output_path = input("\nEnter output path (or press Enter for RecipesComplete.csv): ").strip()
