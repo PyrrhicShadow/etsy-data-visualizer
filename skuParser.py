@@ -212,7 +212,7 @@ def parse_sku(sku_input):
     if finding:
         finding_desc = SKU_KEY.get(finding, finding.lower())
         desc_parts.append(finding_desc)
-        if matched_prefix is not 'AETHER': 
+        if matched_prefix != 'AETHER': 
             desc_parts[-1] += f's'
     
     elif chain_length is not None:
