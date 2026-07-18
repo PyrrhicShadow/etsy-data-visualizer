@@ -60,6 +60,7 @@
 1115,4mm brown faceted bicone glass beads,2.27,200,200
 1120,4mm mixed color faceted bicone glass beads strands,3.89,83,83
 1121,4mm mixed color faceted bicone glass beads,1.29,100,100
+1201,8mm red round jelly glass beads,7.66,1000,535
 1202,8mm orange round jelly glass beads,2.5,45,45
 1203,8mm yellow round jelly glass beads,3,50,50
 1204,8mm green round jelly glass beads,2.5,45,45
@@ -70,7 +71,10 @@
 1209,8mm gray round jelly glass beads,2.85,100,100
 1210,8mm black round jelly glass beads,2.45,105,105
 1211,8mm pink round jelly glass beads,2.86,100,100
+1212,8mm magenta round jelly glass beads,7.66,1000,535
 1213,8mm light green round jelly glass beads,1.97,100,100
+1214,8mm light purple round jelly glass beads,7.66,1000,535
+1215,8mm brown round jelly glass beads,7.66,1000,535
 1216,8mm opaque blue glass beads,2.59,48,48
 1220,8mm round jelly glass bead box,7.66,1000,535
 1302,10mm orange round jelly glass beads,4.04,42,42
@@ -82,9 +86,38 @@
 1317,10mm ice blue round jelly glass beads,4.04,43,43
 1318,10mm dark yellow round jelly glass beads,3.39,79,79
 1320,10mm mixed round jelly glass beads,3.91,105,12
+1401,6mm red round plastic pearl beads,7.49,3360,2520
+1402,6mm orange round plastic pearl beads,7.49,3360,2520
+1403,6mm yellow round plastic pearl beads,7.49,3360,2520
+1404,6mm green round plastic pearl beads,7.49,3360,2520
+1405,6mm cyan round plastic pearl beads,7.49,3360,2520
+1406,6mm blue round plastic pearl beads,7.49,3360,2520
+1407,6mm purple round plastic pearl beads,7.49,3360,2520
+1408,6mm white round plastic pearl beads,1.67,500,500
+1409,6mm gray round plastic pearl beads,7.49,3360,2520
+1410,6mm black round plastic pearl beads,7.49,3360,2520
 1411,6mm pink round plastic pearl beads,2.88,200,200
+1412,6mm magenta round plastic pearl beads,7.49,3360,2520
+1413,6mm light green round plastic pearl beads,7.49,3360,2520
+1414,6mm light purple round plastic pearl beads,7.49,3360,2520
+1415,6mm brown round plastic pearl beads,7.49,3360,2520
 1420,6mm round plastic pearl box,4.72,1680,1260
 1500,faceted red teardrop crystal beads,4.36,12,12
 1501,teardrop smooth crystal bead,3.78,10,10
 1502,long teardop crystal beads,3.79,30,12
 1503,5x7mm blue faceted glass briolette beads,1.64,30,30
+1601,4mm red faceted cube glass beads,1.44,100,100
+1602,4mm orange faceted cube glass beads,1.44,100,100
+1603,4mm yellow faceted cube glass beads,2.19,100,100
+1604,4mm green faceted cube glass beads,1.44,100,100
+1605,4mm cyan faceted cube glass beads,2.69,98,98
+1606,4mm blue faceted cube glass beads,1.44,100,100
+1607,4mm purple faceted cube glass beads,0.94,100,100
+1608,4mm white faceted cube glass beads,1.44,100,100
+1609,4mm gray faceted cube glass beads,1.44,100,100
+1610,4mm black faceted cube glass beads,2.24,100,100
+1611,4mm pink faceted cube glass beads,2.19,100,100
+1612,4mm magenta faceted cube glass beads,2.51,100,100
+1613,4mm light green faceted cube glass beads,1.44,100,100
+1614,4mm light purple faceted cube glass beads,1.79,100,100
+1615,4mm brown faceted cube glass beads,2.15,100,50
