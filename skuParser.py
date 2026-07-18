@@ -1,4 +1,4 @@
-# SKU Parser - BRAC Dash Fix (Draft 4)
+# SKU Parser - BRAC Type + CC Color Separation (Draft 4)
 
 SKU_KEY = {
     # == All prefixes (bead styles + special designs) ==
@@ -8,8 +8,7 @@ SKU_KEY = {
     '8R': '8mm round beads',
     'CHD': "children's bracelet kit beads",
     'AETHER': 'Aether cosplay',
-    'CC-RW': 'candy cane (red & white)',
-    'CC-RWG': 'candy cane (red, white, green)',
+    'CC': 'candy cane',
     'HOWLS': "Howl's moving castle",
     'SEASONS-WINTER': 'winter cottage-core',
     'SEASONS-SPRING': 'spring cottage-core',
@@ -17,6 +16,10 @@ SKU_KEY = {
     'SEASONS-FALL': 'fall cottage-core',
     'KYO-RED': 'Kyo Soma (red)',
     'KYO-BLACK': 'Kyo Soma (black)',
+    
+    # == Color codes for CC ==
+    'RW': 'red & white',
+    'RWG': 'red, white, green',
     
     # == Pride flags ==
     'RAIN6': '6-stripe rainbow',
@@ -72,13 +75,16 @@ SKU_KEY = {
 # Element variants for AETHER
 AETHER_ELEMENTS = ['ANEMO', 'GEO', 'ELECTRO', 'DENDRO', 'HYDRO', 'PYRO', 'CRYO', 'NONE', 'ALL']
 
+# Color codes for CC
+CC_COLORS = ['RW', 'RWG', 'RAINBOW', 'BLACK', 'WHITE', 'GOLD', 'SILVER', 'PINK', 'BLUE']
+
 TART_VALUES = {'1': 'single', '2': 'pair'}
 
 # All valid prefixes ordered from longest to shortest (for correct matching)
 PREFIXES = [
     'SEASONS-WINTER', 'SEASONS-SPRING', 'SEASONS-SUMMER', 'SEASONS-FALL',
-    'CC-RW', 'CC-RWG', 'KYO-RED', 'KYO-BLACK',
-    'AETHER', '4B', '4C', '6P', '8R', 'CHD', 'HOWLS'
+    'KYO-RED', 'KYO-BLACK',
+    'AETHER', 'CC', '4B', '4C', '6P', '8R', 'CHD', 'HOWLS'
 ]
 
 
@@ -92,7 +98,9 @@ def parse_sku(sku_input):
     finding = None
     chain_length = None
     brace_length = None
+    brace_type = None  # 'elastic' or 'chain'
     element = None
+    color_code = None
     
     import re
     
@@ -126,38 +134,55 @@ def parse_sku(sku_input):
                 remainder = remainder[len(elem):].strip('-')
                 break
     
-    # == Step 4: Parse remainder for specs ==
+    # == Step 4: Parse CC color (only CC has this) ==
+    if matched_prefix == 'CC':
+        for color in CC_COLORS:
+            if remainder.startswith(color):
+                color_code = color
+                remainder = remainder[len(color):].strip('-')
+                break
+    
+    # == Step 5: Parse remainder for specs ==
     if remainder:
         # FIRST: Check for BRAC pattern (including BRAC-e-NUMBER) before splitting
-        # Match: BRAC, optional dash, optional e/E, optional dash, then digits
-        br_match = re.match(r'^(.+)-?BRAC[-]?[eE]?-?(\d+(?:\.\d+)?)$', remainder)
+        # Match: DESIGN-BRAC[N] or DESIGN-BRAC-e[N] or DESIGN-BRAC-e-[N]
+        br_match = re.match(r'^(.+)-?BRAC[-]?e[-]?(\d+(?:\.\d+)?)$', remainder, re.IGNORECASE)
         if br_match:
             design_part = br_match.group(1)
             brace_length = float(br_match.group(2))
+            brace_type = 'elastic'  # BRAC-e is elastic
             parts = [p for p in design_part.split('-') if p]
         else:
-            # Check for NK pattern
-            nk_match = re.match(r'^(.+)-NK(\d+)$', remainder)
-            if nk_match:
-                design_part = nk_match.group(1)
-                chain_length = int(nk_match.group(2))
+            # Check for non-elastic BRAC
+            br_match_chain = re.match(r'^(.+)-?BRAC(\d+(?:\.\d+)?)$', remainder)
+            if br_match_chain:
+                design_part = br_match_chain.group(1)
+                brace_length = float(br_match_chain.group(2))
+                brace_type = 'chain'  # BRAC alone is chain bracelet
                 parts = [p for p in design_part.split('-') if p]
             else:
-                # Check for finding at the end
-                finding_match = re.match(r'^(.+)-(LV|WR|BP)$', remainder)
-                if finding_match:
-                    design_part = finding_match.group(1)
-                    finding = finding_match.group(2)
+                # Check for NK pattern
+                nk_match = re.match(r'^(.+)-NK(\d+)$', remainder)
+                if nk_match:
+                    design_part = nk_match.group(1)
+                    chain_length = int(nk_match.group(2))
                     parts = [p for p in design_part.split('-') if p]
                 else:
-                    # No recognized suffix, entire remainder is design
-                    parts = remainder.split('-')
+                    # Check for finding at the end
+                    finding_match = re.match(r'^(.+)-(LV|WR|BP)$', remainder)
+                    if finding_match:
+                        design_part = finding_match.group(1)
+                        finding = finding_match.group(2)
+                        parts = [p for p in design_part.split('-') if p]
+                    else:
+                        # No recognized suffix, entire remainder is design
+                        parts = remainder.split('-')
         
         # Join remaining parts as design
         if parts:
             design = '-'.join(parts)
     
-    # == Step 5: Build description ==
+    # == Step 6: Build description ==
     desc_parts = []
     
     # Add prefix description
@@ -168,6 +193,11 @@ def parse_sku(sku_input):
     if design:
         design_desc = SKU_KEY.get(design, design.lower())
         desc_parts.append(design_desc)
+    
+    # Add color for CC
+    if color_code:
+        color_desc = SKU_KEY.get(color_code, color_code.lower())
+        desc_parts.append(f"({color_desc})")
     
     # Add element for AETHER
     if element:
@@ -186,7 +216,10 @@ def parse_sku(sku_input):
             desc_parts.append(f'necklace with {chain_length}-inch chain')
     
     elif brace_length is not None:
-        desc_parts.append(f'bracelet ({brace_length}-inch)')
+        if brace_type == 'elastic':
+            desc_parts.append(f'elastic bracelet ({brace_length}-inch)')
+        else:
+            desc_parts.append(f'chain bracelet ({brace_length}-inch)')
     
     formatted_desc = ' '.join(desc_parts)
     
@@ -197,7 +230,9 @@ def parse_sku(sku_input):
         'finding': finding,
         'chain_length': chain_length,
         'brace_length': brace_length,
+        'brace_type': brace_type,
         'element': element,
+        'color_code': color_code,
         'formatted_description': formatted_desc,
     }
 
