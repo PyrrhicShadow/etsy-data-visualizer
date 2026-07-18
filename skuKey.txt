@@ -1,0 +1,62 @@
+== Bead styles == 
+4B - 4mm bicone beads 
+4C - 4mm cube beads 
+6P - 6mm pearl beads 
+8R - 8mm round beads
+
+== Pride flags == 
+RAIN6 - 6-stripe rainbow 
+RAIN7 - 7-stripe rainbow 
+RAIN8 - 8-stripe rainbow 
+PROG - progress pride 
+PHILLY - Philadelphia rainbow 
+LESBO5 - 5-stripe lesbian 
+GAY5 - 5-stripe gay man 
+BI3 - bisexual (mini) 
+BI5 - bisexual (full) 
+PAN - pansexual 
+TRANS3 - 3-stripe transgender 
+TRANS5 - 5-stripe transgender 
+GQUEER - genderqueer 
+GFLUID - genderfluid 
+ENBY - nonbinary 
+INTSEX - intersex 
+AROACE - aroace 
+ACE4 - asexual 
+ACE6 - asexual (ace in grace) 
+ARO - aromantic 
+CETERO4 - ceterosexual 
+CETERO5 - ceterosexual (alt) 
+MAV - maverique 
+AGEND - agender 
+BIGEND - bigender 
+ANGY - androgyne 
+GNEUT - genderneutral 
+TROIS - neutrois 
+OMNIS - omnisexual 
+MULTG - multigender 
+MULTS - multisexual 
+POLYG - polygender 
+POLYS - polysexual 
+BERRI - berrisexual 
+ALMD - almondsexual 
+ABRO - abrosexual 
+QPR - queer-platonic relationships 
+GAYBO - gaybian 
+GFLUX - genderflux 
+ANDRO - androsexual 
+GYNE - gynesexual
+
+== Jewelry findings/types == 
+LV - leverback earrings 
+WR - French wire earrings 
+BP - 4mm ball post stud earrings 
+NK[n] - n-inch long necklace chain 
+BRAC - bracelet 
+BRAC-e - elastic bracelet
+
+== Misc jewelry == 
+HOWLS - Howl's moving castle jewelry 
+TART[n] - Tartaglia cosplay earrings, n = 1 or 2 (pair) 
+AETHER - Single Aether cosplay earring 
+KRIS - Kris Dreemurr colored earrings
