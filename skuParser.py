@@ -1,4 +1,4 @@
-# SKU Parser - Revised (Draft 4)
+# SKU Parser - Final Revision (Draft 4)
 
 SKU_KEY = {
     # == Bead styles / Design prefixes ==
@@ -8,8 +8,8 @@ SKU_KEY = {
     '8R': '8mm round beads',
     'CHD': "children's bracelet kit beads",
     'AETHER': 'Aether cosplay',
-    'CC-RW': 'candy cane red & white',
-    'CC-RWG': 'candy cane red, white, green',
+    'CC-RW': 'candy cane (red & white)',
+    'CC-RWG': 'candy cane (red, white, green)',
     
     # == Pride flags ==
     'RAIN6': '6-stripe rainbow',
@@ -99,7 +99,7 @@ def parse_sku(sku_input):
         n_val = tart_match.group(1)
         return {
             'sku': sku_original,
-            'formatted_description': f"Tartaglia cosplay ({TART_VALUES.get(n_val, 'unknown')})",
+            'formatted_description': f"Tartaglia cosplay earrings ({TART_VALUES.get(n_val, 'unknown')})",
         }
     
     # HOWLS (may have suffix like NK, WR, etc.)
@@ -114,9 +114,9 @@ def parse_sku(sku_input):
                 if nk_match:
                     chain_length = int(nk_match.group(1))
                     if chain_length == 0:
-                        desc_parts.append('charm with bail only')
+                        desc_parts.append('necklace charm with bail only')
                     else:
-                        desc_parts.append(f'with {chain_length}-inch chain')
+                        desc_parts.append(f'necklace with {chain_length}-inch chain')
             elif suffix in ['LV', 'WR', 'BP']:
                 desc_parts.append(SKU_KEY.get(suffix, suffix.lower()))
         
@@ -126,7 +126,6 @@ def parse_sku(sku_input):
         }
     
     # == Step 2: Check for bead/design prefixes ==
-    # Extended prefix list including AETHER and CC- patterns
     prefixes = ['AETHER', '4B', '4C', '6P', '8R', 'CHD']
     
     matched_prefix = None
@@ -145,13 +144,11 @@ def parse_sku(sku_input):
         remainder = cc_match.group(2)
         matched_prefix = f'CC-{color}'
     elif sku.startswith('CC-'):
-        # Catch partial CC- for error messages
-        matched_prefix = sku.split('-')[0:2]  # Will fail gracefully below
+        matched_prefix = sku.split('-')[0:2]
     
     if not matched_prefix:
-        # Check for plain CC- without color
         if sku.startswith('CC-'):
-            pass  # Will fall through to error
+            pass
         else:
             return {'error': f'Could not parse SKU: {sku_original}. Check the SKU format.'}
     
@@ -173,14 +170,15 @@ def parse_sku(sku_input):
             parts = parts[:-1]
         
         # Check for necklace/bracelet suffixes anywhere in parts
-        for i, part in enumerate(parts[:]):  # Copy list to iterate safely
+        for i, part in enumerate(parts[:]):
             nk_match = re.match(r'NK(\d+)$', part)
             if nk_match:
                 chain_length = int(nk_match.group(1))
                 parts[i] = None
                 continue
             
-            br_match = re.match(r'BRAC\-?e?(\d+(?:\.\d+)?)$', part)
+            # Fixed BRAC regex to handle BRAC-e[N] or BRAC[N] or BRAC-e[N]
+            br_match = re.match(r'BRAC[-]?e?(\d+(?:\.\d+)?)$', part)
             if br_match:
                 brace_length = float(br_match.group(1))
                 parts[i] = None
@@ -217,18 +215,26 @@ def parse_sku(sku_input):
     # Add finding/chain info
     if finding:
         finding_desc = SKU_KEY.get(finding, finding.lower())
-        # Combine with chain info if exists
         if chain_length is not None:
             if chain_length == 0:
-                desc_parts.append('charm with bail only')
+                desc_parts.append('necklace charm with bail only')
             else:
-                finding_desc = f"{finding_desc} with {chain_length}-inch chain"
+                finding_desc = f"{finding_desc} necklace with {chain_length}-inch chain"
         desc_parts.append(finding_desc)
+    elif chain_length is not None:
+        # Handle necklace without finding
+        if chain_length == 0:
+            desc_parts.append('necklace charm with bail only')
+        else:
+            desc_parts.append(f'necklace with {chain_length}-inch chain')
     
     # Bracelet length handling
     if brace_length:
-        if len(desc_parts) > 0:
-            desc_parts[-1] += f' bracelet ({brace_length}-inch)'
+        # Append to the last meaningful part
+        if desc_parts:
+            desc_parts[-1] = f"{desc_parts[-1]} bracelet ({brace_length}-inch)"
+        else:
+            desc_parts.append(f'bracelet ({brace_length}-inch)')
     
     formatted_desc = ' '.join(desc_parts)
     
@@ -267,11 +273,9 @@ def main():
         else:
             print(f"\n✅ SKU: {result['sku']}")
             print(f"   {result['formatted_description']}")
-            
-            if result.get('element'):
-                print(f"   Element: {result['element']}")
-            
-            print()
+            # REMOVED element print line
+    
+    print()
 
 
 if __name__ == "__main__":
