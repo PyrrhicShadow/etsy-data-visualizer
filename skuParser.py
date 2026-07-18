@@ -1,4 +1,4 @@
-# SKU Parser - Bug Fixed (Draft 4)
+# SKU Parser - Final Fixes (Draft 4)
 
 SKU_KEY = {
     # == Bead styles / Design prefixes ==
@@ -54,6 +54,13 @@ SKU_KEY = {
     'ANDRO': 'androsexual',
     'GYNE': 'gynesexual',
     'USA': 'American flag',
+    'KRIS': 'Kris Dreemurr inspired',
+    'KYO-RED': 'Kyo Soma (red)',
+    'KYO-BLACK': 'Kyo Soma (black)',
+    'SEASONS-WINTER': 'winter cottage-core',
+    'SEASONS-SPRING': 'spring cottage-core',
+    'SEASONS-SUMMER': 'summer cottage-core',
+    'SEASONS-FALL': 'fall cottage-core',
     
     # == Findings ==
     'LV': 'leverback earring',
@@ -63,17 +70,6 @@ SKU_KEY = {
 
 # Element variants for AETHER
 AETHER_ELEMENTS = ['ANEMO', 'GEO', 'ELECTRO', 'DENDRO', 'HYDRO', 'PYRO', 'CRYO', 'NONE', 'ALL']
-
-# Special designs without bead prefix
-SPECIAL_DESIGNS = {
-    'HOWLS': "Howl's moving castle",
-    'KYO-RED': 'Kyo Soma (red)',
-    'KYO-BLACK': 'Kyo Soma (black)',
-    'SEASONS-WINTER': 'winter cottage-core',
-    'SEASONS-SPRING': 'spring cottage-core',
-    'SEASONS-SUMMER': 'summer cottage-core',
-    'SEASONS-FALL': 'fall cottage-core',
-}
 
 TART_VALUES = {'1': 'single', '2': 'pair'}
 
@@ -89,10 +85,12 @@ def parse_sku(sku_input):
     chain_length = None
     brace_length = None
     element = None
+    special_design = None
     
     import re
     
-    # == Step 1: Check for special standalone designs ==
+    # == Step 1: Check for special standalone designs FIRST ==
+    
     # TART-[n]
     tart_match = re.match(r'^TART-(\d+)$', sku)
     if tart_match:
@@ -107,6 +105,29 @@ def parse_sku(sku_input):
     if howls_match:
         suffix = howls_match.group(1)
         desc_parts = ["Howl's moving castle"]
+        
+        if suffix:
+            nk_match = re.match(r'NK(\d+)$', suffix)
+            if nk_match:
+                chain_length = int(nk_match.group(1))
+                if chain_length == 0:
+                    desc_parts.append('necklace charm with bail only')
+                else:
+                    desc_parts.append(f'necklace with {chain_length}-inch chain')
+            elif suffix in ['LV', 'WR', 'BP']:
+                desc_parts.append(SKU_KEY.get(suffix, suffix.lower()))
+        
+        return {
+            'sku': sku_original,
+            'formatted_description': ' '.join(desc_parts),
+        }
+    
+    # SEASONS-[season]-[finding/suffix]
+    seasons_match = re.match(r'^SEASONS-(WINTER|SPRING|SUMMER|FALL)(?:-(.+))?$', sku)
+    if seasons_match:
+        season = seasons_match.group(1).lower()
+        suffix = seasons_match.group(2)
+        desc_parts = [f"{season} cottage-core"]
         
         if suffix:
             nk_match = re.match(r'NK(\d+)$', suffix)
@@ -165,7 +186,7 @@ def parse_sku(sku_input):
         
         # Check for necklace chain suffix first (NK[n])
         for i, part in enumerate(parts[:]):
-            if part is None:  # Skip None values
+            if part is None:
                 continue
             nk_match = re.match(r'NK(\d+)$', part)
             if nk_match:
@@ -173,11 +194,12 @@ def parse_sku(sku_input):
                 parts[i] = None
                 break
         
-        # Check for bracelet suffix (BRAC[n] or BRAC-e[n])
+        # Check for bracelet suffix (BRAC[n], BRAC-e[n], or BRAC-E[n]) - case insensitive
         for i, part in enumerate(parts[:]):
-            if part is None:  # Skip None values
+            if part is None:
                 continue
-            br_match = re.match(r'BRAC[-]?e?(\d+(?:\.\d+)?)$', part)
+            # Match BRAC, optional dash, optional e/E, then digits
+            br_match = re.match(r'BRAC[-]?[eE]?(\d+(?:\.\d+)?)$', part)
             if br_match:
                 brace_length = float(br_match.group(1))
                 parts[i] = None
