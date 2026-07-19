@@ -155,6 +155,14 @@ def suggest_recipe_keys(base_sku, recipes, n=5):
     return difflib.get_close_matches(base_sku, recipes.keys(), n=n, cutoff=0.5)
 
 
+def material_label(material_id, mat):
+    """Human-readable 'ID (name)' label for breakdown lines, falling back
+    gracefully if the material isn't in inventory."""
+    if mat and mat.get('name'):
+        return f"{material_id} ({mat['name']})"
+    return f"{material_id} (unknown material)"
+
+
 def calculate_packaging_cost(pkg_key, pkg_qty, inventory, recipes):
     """Packaging labels ('ear-card', 'chain-card', 'bag') are recipe keys,
     not material IDs -- e.g. 'ear-card' resolves to 1x material 0901 via
@@ -167,10 +175,11 @@ def calculate_packaging_cost(pkg_key, pkg_qty, inventory, recipes):
     total = 0.0
     items = []
     for mat_id, base_qty in recipes[pkg_key].items():
-        cost, _ = calculate_material_cost(mat_id, base_qty * pkg_qty, inventory)
+        cost, mat = calculate_material_cost(mat_id, base_qty * pkg_qty, inventory)
         total += cost
         items.append({
             'category': 'packaging', 'material_id': mat_id,
+            'material_label': material_label(mat_id, mat),
             'quantity': base_qty * pkg_qty, 'cost': round(cost, 4),
         })
     return total, items
@@ -223,10 +232,11 @@ def calculate_cost(sku, inventory, recipes):
 
         for mat_id, qty in materials.items():
             qty_multiplied = qty * charm_mult if tart_num == 2 else qty
-            cost, _ = calculate_material_cost(mat_id, qty_multiplied, inventory)
+            cost, mat = calculate_material_cost(mat_id, qty_multiplied, inventory)
             total += cost
             result['breakdown'].append({
                 'category': 'charm', 'material_id': mat_id,
+                'material_label': material_label(mat_id, mat),
                 'quantity': qty_multiplied, 'cost': round(cost, 4),
             })
 
@@ -274,10 +284,11 @@ def calculate_cost(sku, inventory, recipes):
     finding_multiplier = multipliers['finding']
 
     for mat_id, qty in charm_recipe.items():
-        cost, _ = calculate_material_cost(mat_id, qty * charm_multiplier, inventory)
+        cost, mat = calculate_material_cost(mat_id, qty * charm_multiplier, inventory)
         result['charm_cost'] += cost
         result['breakdown'].append({
             'category': 'charm', 'material_id': mat_id,
+            'material_label': material_label(mat_id, mat),
             'quantity': qty * charm_multiplier, 'cost': round(cost, 4),
         })
 
@@ -289,10 +300,11 @@ def calculate_cost(sku, inventory, recipes):
         # from the 'nk0' recipe.
         if 'nk0' in recipes:
             for mat_id, qty in recipes['nk0'].items():
-                cost, _ = calculate_material_cost(mat_id, qty * finding_multiplier, inventory)
+                cost, mat = calculate_material_cost(mat_id, qty * finding_multiplier, inventory)
                 finding_total += cost
                 result['breakdown'].append({
                     'category': 'finding', 'material_id': mat_id,
+                    'material_label': material_label(mat_id, mat),
                     'quantity': qty * finding_multiplier, 'cost': round(cost, 4),
                 })
 
@@ -302,10 +314,11 @@ def calculate_cost(sku, inventory, recipes):
         if length and length > 0:
             if 'nk[n]' in recipes:
                 for mat_id, qty in recipes['nk[n]'].items():
-                    cost, _ = calculate_material_cost(mat_id, qty * finding_multiplier, inventory)
+                    cost, mat = calculate_material_cost(mat_id, qty * finding_multiplier, inventory)
                     finding_total += cost
                     result['breakdown'].append({
                         'category': 'finding', 'material_id': mat_id,
+                        'material_label': material_label(mat_id, mat),
                         'quantity': qty * finding_multiplier, 'cost': round(cost, 4),
                     })
 
@@ -313,6 +326,7 @@ def calculate_cost(sku, inventory, recipes):
             if chain_mat:
                 result['breakdown'].append({
                     'category': 'finding', 'material_id': '0300',
+                    'material_label': material_label('0300', chain_mat),
                     'quantity': f"{length} in", 'cost': round(chain_cost, 4),
                     'note': f'{length}-inch chain',
                 })
@@ -325,10 +339,11 @@ def calculate_cost(sku, inventory, recipes):
         finding_recipe_key = category.lower()
         if finding_recipe_key in recipes:
             for mat_id, qty in recipes[finding_recipe_key].items():
-                cost, _ = calculate_material_cost(mat_id, qty * finding_multiplier, inventory)
+                cost, mat = calculate_material_cost(mat_id, qty * finding_multiplier, inventory)
                 finding_total += cost
                 result['breakdown'].append({
                     'category': 'finding', 'material_id': mat_id,
+                    'material_label': material_label(mat_id, mat),
                     'quantity': qty * finding_multiplier, 'cost': round(cost, 4),
                 })
         packaging_rule = PACKAGING_RULES.get(category, PACKAGING_RULES[None])
@@ -372,10 +387,10 @@ def format_output(result):
 
     for item in result['breakdown']:
         qty_str = str(item['quantity'])
-        mat_id = item['material_id']
+        label = item.get('material_label', item['material_id'])
         cost = item['cost']
         note = f"  [{item.get('note', '')}]" if item.get('note') else ""
-        lines.append(f"  \u2022 {mat_id}: {qty_str} @ ${cost:.4f}{note}")
+        lines.append(f"  \u2022 {label}: {qty_str} @ ${cost:.4f}{note}")
 
     lines.append("")
     return "\n".join(lines)
