@@ -67,7 +67,7 @@ def load_inventory(filename):
             inventory[mat_id] = {
                 'name': row['material name'].strip(),
                 'price': float(row['price']),
-                'specific_units': int(row['specific units']),
+                'specific_units': float(row['specific units']),
             }
     return inventory
 
@@ -262,6 +262,14 @@ def calculate_cost(sku, inventory, recipes):
 
     charm_recipe = recipes[base_sku]
     multipliers = SUFFIX_MULTIPLIERS.get(category, SUFFIX_MULTIPLIERS[None])
+
+    # AETHER cosplay earrings are always sold as a single earring, never a
+    # pair -- unlike LV/WR/BP items in general, which double for a pair.
+    # TART is the other single-vs-pair exception, but it's handled
+    # separately above since it branches on '-1'/'-2' rather than a finding.
+    if base_sku.startswith('aether-'):
+        multipliers = {'charm': 1, 'finding': 1}
+
     charm_multiplier = multipliers['charm']
     finding_multiplier = multipliers['finding']
 
