@@ -53,12 +53,13 @@ STANDALONE_PREFIXES = {
 # DESIGNS -- pride flags & misc designs that can appear on bead-prefixed
 # items. code -> (description, trend column name)
 #
-# NOTE: 'MULTG' -> 'MULTIG' is NOT a typo. The SKU code sold on Etsy is
-# MULTG, but the trends CSV column is spelled MULTIG. Both scripts used
-# to assume the column name equals the code, so this sale was silently
+# NOTE: 'MULTG' -> 'MULTIG' and 'MULTS' -> 'MULTIS' are NOT a typos. 
+# The SKU code sold on Etsy is occasionally mispelled MULTG/MULTS, but 
+# the trends CSV column is spelled MULTIG. Both scripts used to 
+# assume the column name equals the code, so this sale was silently
 # undercounted. Centralizing the mapping here fixes that for good.
-# additionally, ACE, CETERO, BI, and TRANS are old aliases that resolve to their 
-# new proper name
+# additionally, ACE, CETERO, BI, and TRANS are old aliases that resolve 
+# to their new proper name
 # ---------------------------------------------------------------------
 DESIGNS = {
     'RAIN6':   ('6-stripe rainbow flag',                'RAIN6'),
@@ -95,7 +96,9 @@ DESIGNS = {
     'TROIS':   ('neutrois flag',                         'TROIS'),
     'OMNIS':   ('omnisexual flag',                       'OMNIS'),
     'MULTG':   ('multigender flag',                      'MULTIG'),  # see note above
-    'MULTS':   ('multisexual flag',                      'MULTS'),
+    'MULTIG':   ('multigender flag',                      'MULTIG'),
+    'MULTS':   ('multisexual flag',                      'MULTIS'),  # see note above
+    'MULTIS':   ('multisexual flag',                      'MULTIS'),
     'POLYG':   ('polygender flag',                       'POLYG'),
     'POLYS':   ('polysexual flag',                       'POLYS'),
     'BERRI':   ('berrisexual flag',                      'BERRI'),

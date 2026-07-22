@@ -84,7 +84,7 @@ TREND_COLUMNS = [
 # STEP 2: SKU vocabulary (from skuParser.py / skuKey.txt), with the
 # renames needed to land on the trends sheet's exact header spelling.
 # ---------------------------------------------------------------------
-import sku_vocabulary as vocab
+import skuVocab as vocab
 
 BEAD_PREFIXES = set(vocab.BEAD_PREFIXES)
 STANDALONE_PREFIXES = set(vocab.STANDALONE_PREFIXES)
@@ -177,7 +177,7 @@ def parse_sku(sku_original):
         elif matched_prefix == 'KYO' and design_token in KYO_COLORS:
             result['flag'] = design_token
             remainder = rest
-        elif matched_prefix in BEAD_PREFIXES and design_token in GENERIC_FLAGS:
+        elif matched_prefix in BEAD_PREFIXES and design_token in DESIGN_COLUMN:
             result['flag'] = design_token
             remainder = rest
         else:
@@ -294,13 +294,13 @@ def build_day_rows(order_items, order_date):
 
             # design flag (pride flags etc.) for bead-prefixed items
             if parsed['flag'] and prefix in BEAD_PREFIXES:
-                col = FLAG_RENAME.get(parsed['flag'], parsed['flag'])
-                if col in TREND_COLUMNS:
+                col = DESIGN_COLUMN.get(parsed['flag'])
+                if col:
                     row[col] += qty
                 else:
-                    print(f"  \u26a0\ufe0f  Warning: design '{parsed['flag']}' has no trends "
-                          f"column yet (order dated {day:%A, %B %d, %Y}); counted in "
-                          f"'items sold' and '{prefix}' only.")
+                    print(f"  ⚠️  Warning: design '{parsed['flag']}' has no trends column yet "
+                        f"(order dated {day:%A, %B %d, %Y}); counted in 'items sold' and "
+                        f"'{prefix}' only.")
 
             # finding
             finding = parsed['finding']
