@@ -56,8 +56,8 @@ def load_inventory(filename):
             inventory[mat_id] = {
                 'name': row['material name'].strip(),
                 'price': float(row['price']),
-                'total_units': int(row['total units']),
-                'specific_units': int(row['specific units']),
+                'total_units': float(row['total units']),
+                'specific_units': float(row['specific units']),
             }
     return inventory
 

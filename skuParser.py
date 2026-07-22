@@ -95,7 +95,8 @@ SUFFIX_FINDINGS = {
     'LV': 'leverback earring',
     'WR': 'French wire earring',
     'BP': '4mm ball post stud earring',
-    'DK': 'earring (Aether outfit standard)'
+    'DK': 'earring (Aether outfit standard)',
+    'CH': 'phone charm',
 }
 
 # Suffix patterns for NK and BRAC
@@ -161,7 +162,7 @@ def parse_sku(sku_input):
             remainder = ''
         # CHECK 2: Is remainder ending with a finding?
         else:
-            finding_match = re.match(r'^(.+)-?(LV|WR|BP)$', remainder)
+            finding_match = re.match(r'^(.+)-?(LV|WR|BP|CH)$', remainder)
             if finding_match:
                 middle_part = finding_match.group(1).strip('-')
                 finding = finding_match.group(2)
@@ -172,7 +173,7 @@ def parse_sku(sku_input):
                 remainder = ''
             else:
                 # CHECK 3: Spec patterns (BRAC, NK)
-                for pattern, brace_val, chain_val in SUFFIX_PATTERNS:
+                for _name, pattern, brace_val, chain_val in SUFFIX_PATTERNS:
                     spec_match = re.search(f'{pattern}$', remainder, re.IGNORECASE)
                     if spec_match:
                         remainder = remainder[:spec_match.start()]
@@ -208,8 +209,8 @@ def parse_sku(sku_input):
     if finding:
         finding_desc = SUFFIX_FINDINGS[finding]
         desc_parts.append(finding_desc)
-        if matched_prefix != 'AETHER':
-            desc_parts[-1] += 's'  # Plural for non-Aether items
+        if matched_prefix != 'AETHER' and finding != 'CH':
+            desc_parts[-1] += 's'  # Plural for non-Aether earring items
     
     elif chain_length is not None:
         if chain_length == 0:
