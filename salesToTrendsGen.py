@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-generateTrends.py - Pyrrhic Silva Shop
+salesToTrendsGen.py - Pyrrhic Silva Shop
 
 Reads the raw sales export (one row per line item) and produces a trends CSV
 in the same layout as the hand-tallied PyrrhicSilvaShopTrends.csv:
@@ -73,8 +73,8 @@ TREND_COLUMNS = [
     'RAIN7', 'RAIN6', 'RAIN8', 'PHILLY', 'PROG', 'TRANS3', 'TRANS5', 'LESBO5', 'GAY5',
     'BI3', 'BI5', 'PAN', 'GQUEER', 'GFLUID', 'ENBY', 'INTSEX', 'AROACE', 'ARO',
     'ACE4', 'ACE6', 'CETERO4', 'CETERO5', 'MAV', 'AGEND', 'ANGY', 'GNEUT', 'TROIS', 
-    'OMNIS', 'MULTIG', 'MULTS', 'POLYG', 'POLYS', 'BIGEND', 'ABRO', 'ANDRO', 'GYNE', 
-    'BERRI', 'ALMD', 'QPR', 'GAYBO', 'GFLUX', 'USA', 'TART', 'HOWLS', '10-13-STAR',
+    'OMNIS', 'MULTIG', 'MULTIS', 'POLYG', 'POLYS', 'BIGEND', 'ABRO', 'ANDRO', 'GYNE', 
+    'BERRI', 'ALMD', 'QPR', 'GAYBO', 'GFLUX', 'QUEER', 'USA', 'TART', 'HOWLS', '10-13-STAR',
     'SEASONS', 'SEASONS-charm', 'spring', 'summer', 'fall', 'winter',
     'CC (Candy-Cane)', 'RW', 'RWG', 'RG', 'KYO-Red', 'KYO-Black', 'KRIS', 'FRISK',
     'AETHER', 'ANEMO', 'GEO', 'ELECTRO', 'DENDRO', 'HYDRO', 'PYRO', 'CRYO', 'NONE', 'ALL',
@@ -84,27 +84,26 @@ TREND_COLUMNS = [
 # STEP 2: SKU vocabulary (from skuParser.py / skuKey.txt), with the
 # renames needed to land on the trends sheet's exact header spelling.
 # ---------------------------------------------------------------------
-BEAD_PREFIXES = {'4B', '4C', '6P', '8R', 'CHD'}
-STANDALONE_PREFIXES = {'AETHER', 'CC', 'HOWLS', 'SEASONS', 'KYO'}
+import sku_vocabulary as vocab
 
-FLAG_RENAME = {
-    # No renames needed anymore - the trends header now spells GQUEER and
-    # CETERO4/CETERO5 correctly, matching skuParser.py directly.
-}
-# Everything else maps to a column of the identical name, IF one exists.
-GENERIC_FLAGS = {
-    'RAIN6', 'RAIN7', 'RAIN8', 'PHILLY', 'PROG', 'TRANS3', 'TRANS5', 'LESBO5', 'GAY5',
-    'BI3', 'BI5', 'PAN', 'GQUEER', 'GFLUID', 'ENBY', 'INTSEX', 'AROACE', 'ARO',
-    'ACE4', 'ACE6', 'CETERO4', 'CETERO5', 'MAV', 'AGEND', 'ANGY', 'GNEUT', 'TROIS', 
-    'OMNIS', 'MULTG', 'MULTS', 'POLYG', 'POLYS', 'BIGEND', 'ABRO', 'ANDRO', 'GYNE', 
-    'BERRI', 'ALMD', 'QPR', 'GAYBO', 'GFLUX', 'USA', 'KRIS', 'FRISK',
-    # known-unmapped (no column exists yet) - kept here just so we can warn
-}
+BEAD_PREFIXES = set(vocab.BEAD_PREFIXES)
+STANDALONE_PREFIXES = set(vocab.STANDALONE_PREFIXES)
 
-AETHER_ELEMENTS = {'ANEMO', 'GEO', 'ELECTRO', 'DENDRO', 'HYDRO', 'PYRO', 'CRYO', 'NONE', 'ALL'}
-SEASON_NAMES = {'WINTER': 'winter', 'SPRING': 'spring', 'SUMMER': 'summer', 'FALL': 'fall'}
-CC_COLORS = {'RW': 'RW', 'RWG': 'RWG', 'RG': 'RG'}
-KYO_COLORS = {'RED': 'KYO-Red', 'BLACK': 'KYO-Black'}
+# code -> trend column, replaces GENERIC_FLAGS + the old FLAG_RENAME hack
+DESIGN_COLUMN = {code: col for code, (_desc, col) in vocab.DESIGNS.items()}
+
+AETHER_ELEMENTS = set(vocab.AETHER_ELEMENTS)
+SEASON_NAMES = {code: col for code, (_desc, col) in vocab.SEASON_NAMES.items()}
+CC_COLORS = {code: col for code, (_desc, col) in vocab.CC_COLORS.items()}
+KYO_COLORS = {code: col for code, (_desc, col) in vocab.KYO_COLORS.items()}
+
+# --- run the cross-check immediately after TREND_COLUMNS is defined ---
+_missing, _unreferenced = vocab.validate_against_trend_columns(
+    TREND_COLUMNS, raise_on_error=True
+)
+if _unreferenced:
+    print(f"  \u2139\ufe0f  {len(_unreferenced)} trend column(s) not tied to any "
+          f"vocabulary code (expected for structural columns): {_unreferenced}")
 
 NON_PRODUCT_TOKENS = {
     'custom', 'cancel', 'refund', 'package bounced',

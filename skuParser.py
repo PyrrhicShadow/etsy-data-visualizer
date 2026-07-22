@@ -1,105 +1,23 @@
 # SKU Parser - Unified Architecture (Draft 5)
 
-# == STEP 1: PREFIX DICTIONARY (base prefixes only) ==
-BEAD_PREFIXES = {
-    '4B': 'Subtle series',
-    '4C': 'Cube series',
-    '6P': 'Pearlescent series',
-    '8R': 'Bold series',
-    'CHD': "Upcycled",
-    'AETHER': 'Aether',
-    'CC': 'Christmas candy cane',
-    'HOWLS': "Howl's Moving Castle cosplay",
-    'SEASONS': 'Seasons:',
-    'KYO': 'Kyo Soma',
-}
+from skuVocab import (
+    BEAD_PREFIXES as _BEAD, STANDALONE_PREFIXES as _STANDALONE, DESIGNS,
+    SEASON_NAMES, AETHER_ELEMENTS, CC_COLORS, KYO_COLORS, FINDINGS,
+)
 
-# == STEP 2: MIDDLE VARIATION DICTIONARY (treat ALL variations uniformly) ==
+# skuParser needs code -> description only; derive it from the vocabulary.
+BEAD_PREFIXES = {**{k: v[0] for k, v in _BEAD.items()},
+                  **{k: v[0] for k, v in _STANDALONE.items()}}
+
 MIDDLE_VARIATIONS = {
-    # Season types (was in PREFIXES before)
-    'WINTER': 'Winter',
-    'SPRING': 'Spring',
-    'SUMMER': 'Summer',
-    'FALL': 'Fall',
-    
-    # Kyo colors (was in PREFIXES before)
-    'RED': 'red bracelet inspired',
-    'BLACK': 'black bracelet inspired',
-    
-    # Aether elements (now consistent with everything else)
-    'ANEMO': 'anemo',
-    'GEO': 'geo',
-    'ELECTRO': 'electro',
-    'DENDRO': 'dendro',
-    'HYDRO': 'hydro',
-    'PYRO': 'pyro',
-    'CRYO': 'cryo',
-    'NONE': 'none',
-    'ALL': 'all',
-    
-    # Color codes for CC
-    'RWG': 'red, white, green',
-    'RW': 'red & white',
-    'RG': 'red & green',
-    
-    # Pride flags (unchanged)
-    'RAIN6': '6-stripe rainbow flag',
-    'RAIN7': '7-stripe rainbow flag',
-    'RAIN8': '8-stripe rainbow flag',
-    'PROG': 'progress pride flag',
-    'PHILLY': 'Philadelphia rainbow flag',
-    'LESBO5': '5-stripe lesbian flag',
-    'GAY5': '5-stripe gay man flag',
-    'BI3': 'bisexual (mini) flag',
-    'BI5': 'bisexual (full) flag',
-    'PAN': 'pansexual flag',
-    'TRANS3': '3-stripe transgender flag',
-    'TRANS5': '5-stripe transgender flag',
-    'GQUEER': 'genderqueer flag',
-    'GFLUID': 'genderfluid flag',
-    'ENBY': 'nonbinary flag',
-    'INTSEX': 'intersex flag',
-    'AROACE': 'aroace flag',
-    'ACE4': 'asexual flag',
-    'ACE6': 'asexual (ace in grace) flag',
-    'ARO': 'aromantic flag',
-    'CETERO4': 'ceterosexual flag',
-    'CETERO5': 'ceterosexual (alt) flag',
-    'MAV': 'maverique flag',
-    'AGEND': 'agender flag',
-    'BIGEND': 'bigender flag',
-    'ANGY': 'androgyne flag',
-    'GNEUT': 'gender neutral flag',
-    'TROIS': 'neutrois flag',
-    'OMNIS': 'omnisexual flag',
-    'MULTG': 'multigender flag',
-    'MULTS': 'multisexual flag',
-    'POLYG': 'polygender flag',
-    'POLYS': 'polysexual flag',
-    'BERRI': 'berrisexual flag',
-    'ALMD': 'almondsexual flag',
-    'ABRO': 'abrosexual flag',
-    'QPR': 'queer-platonic relationships flag',
-    'GAYBO': 'gaybian flag',
-    'GFLUX': 'genderflux flag',
-    'ANDRO': 'androsexual flag',
-    'GYNE': 'gynesexual flag',
-    'QUEER': 'queer flag',
-    
-    # Other designs
-    'USA': 'American flag',
-    'KRIS': 'Kris/Chara shirt inspired',
-    'FRISK': 'Frisk shirt inspired',
+    **{k: v[0] for k, v in SEASON_NAMES.items()},
+    **{k: v[0] for k, v in KYO_COLORS.items()},
+    **{k: v[0] for k, v in AETHER_ELEMENTS.items()},
+    **{k: v[0] for k, v in CC_COLORS.items()},
+    **{k: v[0] for k, v in DESIGNS.items()},
 }
 
-# == STEP 3: SUFFIX FINDING DICTIONARY ==
-SUFFIX_FINDINGS = {
-    'LV': 'leverback earring',
-    'WR': 'French wire earring',
-    'BP': '4mm ball post stud earring',
-    'DK': 'earring (Aether outfit standard)',
-    'CH': 'phone charm',
-}
+SUFFIX_FINDINGS = {k: v['description'] for k, v in FINDINGS.items()}
 
 # Suffix patterns for NK and BRAC
 SUFFIX_PATTERNS = [

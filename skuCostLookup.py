@@ -11,18 +11,15 @@ ending means -- no separate dictionaries that have to agree on casing.
 import csv
 import re
 import difflib
+from skuVocab import FINDINGS, TART_INFO
 
 # Packaging by suffix category. NK is split into "charm on a bail" (length 0)
 # and "actual chain" (length > 0) further down, since they ship differently.
 PACKAGING_RULES = {
-    'LV': ('ear-card', 1),
-    'WR': ('ear-card', 1),
-    'BP': ('ear-card', 1),
-    'DK': ('ear-card', 1),
-    'CH': ('bag', 1),
+    **{code: info['packaging'] for code, info in FINDINGS.items()},
     'NK': ('chain-card', 1),
     'NK0': ('bag', 1),
-    'TART': ('ear-card', 1),
+    'TART': TART_INFO['packaging'],
     None: ('bag', 1),
 }
 
@@ -30,11 +27,8 @@ PACKAGING_RULES = {
 # LV/WR/BP produce a pair of earrings, so charm+finding materials double.
 # DK (Aether-style) and everything else is sold as a single piece.
 SUFFIX_MULTIPLIERS = {
-    'LV': {'charm': 2, 'finding': 2},
-    'WR': {'charm': 2, 'finding': 2},
-    'BP': {'charm': 2, 'finding': 2},
-    'DK': {'charm': 1, 'finding': 1},
-    'CH': {'charm': 1, 'finding': 1},
+    **{code: {'charm': info['charm_mult'], 'finding': info['finding_mult']}
+       for code, info in FINDINGS.items()},
     'NK': {'charm': 1, 'finding': 1},
     'NK0': {'charm': 1, 'finding': 1},
     'TART': {'charm': 2, 'finding': 0},
