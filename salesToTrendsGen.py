@@ -73,6 +73,7 @@ the CSV until a column is added for it.
 """
 
 import csv
+import os
 import re
 from collections import defaultdict
 from datetime import datetime
@@ -376,6 +377,107 @@ def _fmt(val):
     return val
 
 
+def _parse_reference_date(date_str):
+    """Try a few date formats, since a hand-edited spreadsheet may have
+    been reformatted by Excel/Sheets at some point. Returns None (and lets
+    the caller warn) if nothing matches."""
+    date_str = date_str.strip().strip('"').strip("'")
+    for fmt in ("%A, %B %d, %Y", "%B %d, %Y", "%m/%d/%Y", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(date_str, fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def load_reference_trends(path):
+    """
+    Load an existing (hand-tallied or previously generated) trends CSV into
+    the same shape build_day_rows() produces: dict date -> {column: value}.
+    Matches columns by NAME (from the file's own header row), not position,
+    so minor column reordering won't silently misalign values. Blank cells
+    are treated as 0. The trailing "Total" row and any blank rows are
+    skipped.
+    """
+    days = {}
+    with open(path, 'r', newline='', encoding='utf-8-sig') as f:
+        reader = csv.reader(f)
+        header = next(reader)
+        for row in reader:
+            if not row or not row[0].strip() or row[0].strip() == 'Total':
+                continue
+            day = _parse_reference_date(row[0])
+            if day is None:
+                print(f"  \u26a0\ufe0f  Warning: could not parse reference date "
+                      f"'{row[0]}', skipping that row.")
+                continue
+            row_dict = {}
+            for col, val in zip(header[1:], row[1:]):
+                val = (val or '').strip()
+                if val == '':
+                    row_dict[col] = 0
+                    continue
+                try:
+                    num = float(val)
+                    row_dict[col] = int(num) if num.is_integer() else num
+                except ValueError:
+                    row_dict[col] = val  # leave as-is; will just show as a mismatch
+            days[day] = row_dict
+    return days
+
+
+def compare_trends(generated_days, reference_days):
+    """
+    Print per-date discrepancies between the freshly generated trends and
+    an existing reference file (hand-tallied or a prior run), so they can
+    be manually checked against the Etsy dashboard.
+
+    A date only in one side is flagged as such. For dates in both, only
+    columns whose values actually differ are printed - matching columns
+    are not noise here.
+    """
+    all_dates = sorted(set(generated_days) | set(reference_days))
+    discrepancy_count = 0
+
+    for day in all_dates:
+        label = f"{day.strftime('%A, %B')} {day.day}, {day.year}"
+        mine = generated_days.get(day)
+        theirs = reference_days.get(day)
+
+        if mine is not None and theirs is None:
+            print(f"{label}  -- only in generated output (missing from reference file)")
+            discrepancy_count += 1
+            continue
+        if mine is None and theirs is not None:
+            print(f"{label}  -- only in reference file (missing from generated output)")
+            discrepancy_count += 1
+            continue
+
+        # present in both - compare column by column (skip 'date' itself)
+        diffs = []
+        columns = [c for c in TREND_COLUMNS if c != 'date']
+        for col in columns:
+            a = mine.get(col, 0)
+            b = theirs.get(col, 0)
+            a_num = a if isinstance(a, (int, float)) else 0
+            b_num = b if isinstance(b, (int, float)) else 0
+            if a_num != b_num:
+                diffs.append((col, a, b))
+
+        if diffs:
+            print(f"{label}")
+            for col, a, b in diffs:
+                a_disp = _fmt(a) if isinstance(a, (int, float)) else a
+                b_disp = _fmt(b) if isinstance(b, (int, float)) else b
+                print(f"    {col:35s} generated={a_disp!s:<10s} reference={b_disp!s}")
+            discrepancy_count += 1
+
+    if discrepancy_count == 0:
+        print("No discrepancies found - generated output matches the reference file exactly.")
+    else:
+        print(f"\n{discrepancy_count} date(s) with discrepancies (see above).")
+
+
 def main():
     sales_path = input("Enter path to sales CSV (or Enter for PyrrhicSilvaShopSales.csv): ").strip()
     if not sales_path:
@@ -394,6 +496,25 @@ def main():
 
     write_trends_csv(days, output_path)
     print(f"\n\u2713 Saved to {output_path}")
+
+    # Compare against an existing hand-tallied (or previously generated)
+    # trends CSV in the same folder as the sales export, so discrepancies
+    # can be checked manually against the Etsy dashboard.
+    reference_path = os.path.join(
+        os.path.dirname(os.path.abspath(sales_path)), 'PyrrhicSilvaShopTrends.csv'
+    )
+    print(f"\nLooking for reference file at {reference_path} ...")
+    if not os.path.isfile(reference_path):
+        print("  (not found - skipping comparison)")
+        return
+
+    reference_days = load_reference_trends(reference_path)
+    print(f"  \u2713 loaded {len(reference_days)} dated rows from reference file")
+
+    print("\n" + "=" * 60)
+    print("DISCREPANCIES vs PyrrhicSilvaShopTrends.csv")
+    print("=" * 60 + "\n")
+    compare_trends(days, reference_days)
 
 
 if __name__ == '__main__':
