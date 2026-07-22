@@ -46,11 +46,9 @@ skuKey.txt and skuParser.py, then checked against the sample trends file):
     skuParser.py does not recognize this suffix at all (SUFFIX_FINDINGS
     only has LV/WR/BP/DK) - this script adds that recognition.
   - Pride-flag / design columns (RAIN6, LESBO5, PAN, etc.): count of items
-    carrying that design, regardless of bead style or finding. A few
-    columns in the sample file use different spelling than skuParser.py:
-    GQUEER -> "GQUUER", RWG -> "RGW", and CETERO4/CETERO5 are both folded
-    into a single "CETERO" column. Those exact quirks are preserved here
-    so the output matches the existing sheet's headers.
+    carrying that design, regardless of bead style or finding. Column
+    names now match skuParser.py's spelling directly (GQUEER, CETERO4,
+    CETERO5, RWG) after the trends header typos were corrected.
   - AETHER / SEASONS / CC (Candy-Cane): each also fills a second, more
     specific column (element, season, or color pattern).
   - TART: NOT a simple item count. The sample file stores the number
@@ -88,11 +86,11 @@ TREND_COLUMNS = [
     'NK (necklace)', 'Chain (inches)', 'CH (phone charm)',
     'LV (lever back earrings', 'WR (fish hook earrings', 'BP (4mm ball post studs)',
     'RAIN7', 'RAIN6', 'RAIN8', 'PHILLY', 'TRANS3', 'TRANS5', 'LESBO5', 'GAY5',
-    'BI3', 'BI5', 'PAN', 'GQUUER', 'GFLUID', 'ENBY', 'INTSEX', 'AROACE', 'ARO',
-    'ACE4', 'ACE6', 'CETERO', 'MAV', 'AGEND', 'ANGY', 'GNEUT', 'TROIS', 'OMNIS',
+    'BI3', 'BI5', 'PAN', 'GQUEER', 'GFLUID', 'ENBY', 'INTSEX', 'AROACE', 'ARO',
+    'ACE4', 'ACE6', 'CETERO4', 'CETERO5', 'MAV', 'AGEND', 'ANGY', 'GNEUT', 'TROIS', 'OMNIS',
     'MULTS', 'POLYG', 'POLYS', 'USA', 'TART', 'HOWLS', '10-13-STAR',
     'SEASONS', 'SEASONS-charm', 'spring', 'summer', 'fall', 'winter',
-    'CC (Candy-Cane)', 'RW', 'RGW', 'RG', 'KYO-Red', 'KYO-Black', 'KRIS', 'FRISK',
+    'CC (Candy-Cane)', 'RW', 'RWG', 'RG', 'KYO-Red', 'KYO-Black', 'KRIS', 'FRISK',
     'AETHER', 'ANEMO', 'GEO', 'ELECTRO', 'DENDRO', 'HYDRO', 'PYRO', 'CRYO', 'NONE', 'ALL',
 ]
 
@@ -104,9 +102,8 @@ BEAD_PREFIXES = {'4B', '4C', '6P', '8R', 'CHD'}
 STANDALONE_PREFIXES = {'AETHER', 'CC', 'HOWLS', 'SEASONS', 'KYO'}
 
 FLAG_RENAME = {
-    'GQUEER': 'GQUUER',
-    'CETERO4': 'CETERO',
-    'CETERO5': 'CETERO',
+    # No renames needed anymore - the trends header now spells GQUEER and
+    # CETERO4/CETERO5 correctly, matching skuParser.py directly.
 }
 # Everything else maps to a column of the identical name, IF one exists.
 GENERIC_FLAGS = {
@@ -121,7 +118,7 @@ GENERIC_FLAGS = {
 
 AETHER_ELEMENTS = {'ANEMO', 'GEO', 'ELECTRO', 'DENDRO', 'HYDRO', 'PYRO', 'CRYO', 'NONE', 'ALL'}
 SEASON_NAMES = {'WINTER': 'winter', 'SPRING': 'spring', 'SUMMER': 'summer', 'FALL': 'fall'}
-CC_COLORS = {'RW': 'RW', 'RWG': 'RGW', 'RG': 'RG'}
+CC_COLORS = {'RW': 'RW', 'RWG': 'RWG', 'RG': 'RG'}
 KYO_COLORS = {'RED': 'KYO-Red', 'BLACK': 'KYO-Black'}
 
 NON_PRODUCT_TOKENS = {
