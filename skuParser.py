@@ -84,10 +84,12 @@ MIDDLE_VARIATIONS = {
     'GFLUX': 'genderflux flag',
     'ANDRO': 'androsexual flag',
     'GYNE': 'gynesexual flag',
+    'QUEER': 'queer flag',
     
     # Other designs
     'USA': 'American flag',
     'KRIS': 'Kris/Chara shirt inspired',
+    'FRISK': 'Frisk shirt inspired',
 }
 
 # == STEP 3: SUFFIX FINDING DICTIONARY ==

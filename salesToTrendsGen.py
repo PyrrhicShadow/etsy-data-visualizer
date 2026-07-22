@@ -33,22 +33,14 @@ skuKey.txt and skuParser.py, then checked against the sample trends file):
   - "items sold": total quantity of every counted line item that day.
   - 4B/4C/6P/8R/CHD: total quantity of items with that bead-style prefix.
   - LV/WR/BP: total quantity of items with that earring finding suffix.
-    NOTE: this is applied uniformly, including to CHD ("kids' bracelet
-    kit") SKUs that carry an earring suffix. The sample trends file
-    excluded CHD from these finding counts in at least one case - see the
-    note printed at the end of this run.
   - NK / "Chain (inches)": count of necklace items, and the summed chain
     length (0 for a NK0 "charm on a bail" listing).
   - BRAC / BRAC-e / "BRAC (inches)": count of chain vs. elastic bracelets,
     and their summed length in inches (both types share one inches column,
     matching the sample file).
-  - "CH (phone charm)": count of "-CH" phone charm findings. The shipped
-    skuParser.py does not recognize this suffix at all (SUFFIX_FINDINGS
-    only has LV/WR/BP/DK) - this script adds that recognition.
+  - "CH (phone charm)": count of "-CH" phone charm findings. 
   - Pride-flag / design columns (RAIN6, LESBO5, PAN, etc.): count of items
-    carrying that design, regardless of bead style or finding. Column
-    names now match skuParser.py's spelling directly (GQUEER, CETERO4,
-    CETERO5, RWG) after the trends header typos were corrected.
+    carrying that design, regardless of bead style or finding. 
   - AETHER / SEASONS / CC (Candy-Cane): each also fills a second, more
     specific column (element, season, or color pattern).
   - TART: NOT a simple item count. The sample file stores the number
@@ -57,16 +49,8 @@ skuKey.txt and skuParser.py, then checked against the sample trends file):
   - USA, KRIS, HOWLS, KYO-Red, KYO-Black, "10-13-STAR": direct name/SKU
     matches, no further sub-columns.
 
-Known gaps in the shipped skuParser.py that this script fixes:
-  1. SUFFIX_PATTERNS is unpacked as a 3-tuple in a loop but defined with
-     4 elements - `for pattern, brace_val, chain_val in SUFFIX_PATTERNS`
-     raises ValueError immediately. That means the shared skuParser.py
-     currently cannot parse ANY necklace or bracelet SKU. Fixed here.
-  2. No recognition of the "-CH" phone charm finding. Added here.
-
 Columns that exist in skuParser.py's flag list but do NOT have a column
-in the trends format (PROG, MULTG, BIGEND, BERRI, ALMD, ABRO, QPR, GAYBO,
-GFLUX, ANDRO, GYNE) are not silently dropped: if one is ever sold, this
+in the trends format are not silently dropped: if one is ever sold, this
 script prints a warning and still counts it toward "items sold" and the
 bead-type column, but the specific design won't appear anywhere else in
 the CSV until a column is added for it.
@@ -85,11 +69,12 @@ TREND_COLUMNS = [
     'date', 'items sold', '4B', '4C', '6P', '8R', 'CHD',
     'BRAC (chain bracelets & chokers)', 'BRAC-e (elastic bracelets)', 'BRAC (inches)',
     'NK (necklace)', 'Chain (inches)', 'CH (phone charm)',
-    'LV (lever back earrings', 'WR (fish hook earrings', 'BP (4mm ball post studs)',
-    'RAIN7', 'RAIN6', 'RAIN8', 'PHILLY', 'TRANS3', 'TRANS5', 'LESBO5', 'GAY5',
+    'LV (lever back earrings)', 'WR (fish hook earrings)', 'BP (4mm ball post studs)',
+    'RAIN7', 'RAIN6', 'RAIN8', 'PHILLY', 'PROG', 'TRANS3', 'TRANS5', 'LESBO5', 'GAY5',
     'BI3', 'BI5', 'PAN', 'GQUEER', 'GFLUID', 'ENBY', 'INTSEX', 'AROACE', 'ARO',
-    'ACE4', 'ACE6', 'CETERO4', 'CETERO5', 'MAV', 'AGEND', 'ANGY', 'GNEUT', 'TROIS', 'OMNIS',
-    'MULTS', 'POLYG', 'POLYS', 'USA', 'TART', 'HOWLS', '10-13-STAR',
+    'ACE4', 'ACE6', 'CETERO4', 'CETERO5', 'MAV', 'AGEND', 'ANGY', 'GNEUT', 'TROIS', 
+    'OMNIS', 'MULTIG', 'MULTS', 'POLYG', 'POLYS', 'BIGEND', 'ABRO', 'ANDRO', 'GYNE', 
+    'BERRI', 'ALMD', 'QPR', 'GAYBO', 'GFLUX', 'USA', 'TART', 'HOWLS', '10-13-STAR',
     'SEASONS', 'SEASONS-charm', 'spring', 'summer', 'fall', 'winter',
     'CC (Candy-Cane)', 'RW', 'RWG', 'RG', 'KYO-Red', 'KYO-Black', 'KRIS', 'FRISK',
     'AETHER', 'ANEMO', 'GEO', 'ELECTRO', 'DENDRO', 'HYDRO', 'PYRO', 'CRYO', 'NONE', 'ALL',
@@ -108,13 +93,12 @@ FLAG_RENAME = {
 }
 # Everything else maps to a column of the identical name, IF one exists.
 GENERIC_FLAGS = {
-    'RAIN6', 'RAIN7', 'RAIN8', 'PHILLY', 'TRANS3', 'TRANS5', 'LESBO5', 'GAY5',
+    'RAIN6', 'RAIN7', 'RAIN8', 'PHILLY', 'PROG', 'TRANS3', 'TRANS5', 'LESBO5', 'GAY5',
     'BI3', 'BI5', 'PAN', 'GQUEER', 'GFLUID', 'ENBY', 'INTSEX', 'AROACE', 'ARO',
-    'ACE4', 'ACE6', 'CETERO4', 'CETERO5', 'MAV', 'AGEND', 'ANGY', 'GNEUT',
-    'TROIS', 'OMNIS', 'MULTS', 'POLYG', 'POLYS', 'USA', 'KRIS', 'FRISK',
+    'ACE4', 'ACE6', 'CETERO4', 'CETERO5', 'MAV', 'AGEND', 'ANGY', 'GNEUT', 'TROIS', 
+    'OMNIS', 'MULTG', 'MULTS', 'POLYG', 'POLYS', 'BIGEND', 'ABRO', 'ANDRO', 'GYNE', 
+    'BERRI', 'ALMD', 'QPR', 'GAYBO', 'GFLUX', 'USA', 'KRIS', 'FRISK',
     # known-unmapped (no column exists yet) - kept here just so we can warn
-    'PROG', 'MULTG', 'BIGEND', 'BERRI', 'ALMD', 'ABRO', 'QPR', 'GAYBO',
-    'GFLUX', 'ANDRO', 'GYNE',
 }
 
 AETHER_ELEMENTS = {'ANEMO', 'GEO', 'ELECTRO', 'DENDRO', 'HYDRO', 'PYRO', 'CRYO', 'NONE', 'ALL'}
@@ -322,9 +306,9 @@ def build_day_rows(order_items, order_date):
             # finding
             finding = parsed['finding']
             if finding == 'LV':
-                row['LV (lever back earrings'] += qty
+                row['LV (lever back earrings)'] += qty
             elif finding == 'WR':
-                row['WR (fish hook earrings'] += qty
+                row['WR (fish hook earrings)'] += qty
             elif finding == 'BP':
                 row['BP (4mm ball post studs)'] += qty
             elif finding == 'CH':
