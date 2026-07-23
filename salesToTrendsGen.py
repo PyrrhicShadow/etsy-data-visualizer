@@ -58,7 +58,6 @@ the CSV until a column is added for it.
 
 import csv
 import os
-import re
 from collections import defaultdict
 from datetime import datetime
 
@@ -88,7 +87,6 @@ TREND_COLUMNS = [
 import skuVocab as vocab
 
 BEAD_PREFIXES = set(vocab.BEAD_PREFIXES)
-STANDALONE_PREFIXES = set(vocab.STANDALONE_PREFIXES)
 
 # code -> trend column, replaces GENERIC_FLAGS + the old FLAG_RENAME hack
 DESIGN_COLUMN = {code: col for code, (_desc, col) in vocab.DESIGNS.items()}
@@ -110,102 +108,47 @@ NON_PRODUCT_TOKENS = {
     'custom', 'cancel', 'refund', 'package bounced',
 }
 
-SUFFIX_FINDINGS = {'LV', 'WR', 'BP', 'DK', 'CH'}  # CH added - see module docstring
+from skuParser import parse_sku as _shared_parse_sku
+from skuVocab import FINDINGS
+
+_FINDING_CODES = set(FINDINGS.keys())
+
 
 def parse_sku(sku_original):
-    """
-    Parse one SKU into a small dict describing what it is.
-    Returns None for rows that aren't real product SKUs.
-    Returns {'error': ...} (and prints a warning) for anything that looks
-    like a product SKU but doesn't match a known pattern, so nothing is
-    silently dropped.
-    """
-    sku = sku_original.strip().upper()
+    """Adapter: same return shape build_day_rows() already expects,
+    but the actual parsing is delegated to skuParser.parse_sku()."""
+    sku = sku_original.strip()
     if not sku:
         return None
     if sku.lower() in NON_PRODUCT_TOKENS or sku.lower().startswith('usps'):
         return None
 
-    # --- TART-1 / TART-2 (earring pair count, standalone) ---
-    m = re.match(r'^TART-(\d+)$', sku)
-    if m:
-        return {'kind': 'tart', 'tart_n': int(m.group(1))}
+    parsed = _shared_parse_sku(sku)
 
-    # --- 10-13-star (standalone SKU, no bead prefix) ---
-    if sku == '10-13-STAR':
-        return {'kind': 'ten_thirteen_star'}
-
-    # --- find bead prefix or standalone prefix ---
-    matched_prefix = None
-    remainder = None
-    for prefix in sorted(BEAD_PREFIXES | STANDALONE_PREFIXES, key=len, reverse=True):
-        if sku == prefix or sku.startswith(prefix + '-'):
-            matched_prefix = prefix
-            remainder = sku[len(prefix):].strip('-')
-            break
-
-    if not matched_prefix:
-        print(f"  \u26a0\ufe0f  Warning: could not recognize SKU '{sku_original}', skipping.")
+    if parsed.get('error'):
+        print(f"  ⚠️  Warning: could not recognize SKU '{sku_original}', skipping.")
         return {'error': True}
 
-    result = {
+    if parsed['category'] == 'TART':
+        return {'kind': 'tart', 'tart_n': parsed['tart_n']}
+
+    if parsed.get('is_standalone'):
+        return {'kind': 'ten_thirteen_star'}
+
+    if parsed.get('unmatched_design_token'):
+        print(f"  ⚠️  Warning: design token '{parsed['unmatched_design_token']}' on SKU "
+              f"'{sku_original}' isn't recognized in skuVocab.py yet.")
+
+    category = parsed['category']
+    return {
         'kind': 'standard',
-        'prefix': matched_prefix,
-        'flag': None,
-        'finding': None,
-        'chain_length': None,
-        'brace_length': None,
-        'brace_type': None,
+        'prefix': parsed['prefix'],
+        'flag': parsed['design'],
+        'finding': category if category in _FINDING_CODES else None,
+        'chain_length': parsed['length'] if category == 'NK' else None,
+        'brace_length': parsed['length'] if category in ('BRAC', 'BRAC-E') else None,
+        'brace_type': 'chain' if category == 'BRAC' else 'elastic' if category == 'BRAC-E' else None,
     }
-
-    # --- middle design token (pride flag, season, aether element, kyo color, cc color) ---
-    tokens = remainder.split('-') if remainder else []
-    # first token is the "design"; remaining token(s) are the finding/spec
-    if tokens:
-        design_token = tokens[0]
-        rest = '-'.join(tokens[1:])
-
-        if matched_prefix == 'AETHER' and design_token in AETHER_ELEMENTS:
-            result['flag'] = design_token
-            remainder = rest
-        elif matched_prefix == 'SEASONS' and design_token in SEASON_NAMES:
-            result['flag'] = design_token
-            remainder = rest
-        elif matched_prefix == 'CC' and design_token in CC_COLORS:
-            result['flag'] = design_token
-            remainder = rest
-        elif matched_prefix == 'KYO' and design_token in KYO_COLORS:
-            result['flag'] = design_token
-            remainder = rest
-        elif matched_prefix in BEAD_PREFIXES and design_token in DESIGN_COLUMN:
-            result['flag'] = design_token
-            remainder = rest
-        else:
-            remainder = '-'.join(tokens)  # leave untouched; may just be a finding
-
-    # --- suffix: finding, chain, or bracelet spec ---
-    if remainder:
-        if remainder in SUFFIX_FINDINGS:
-            result['finding'] = remainder
-        else:
-            m = re.match(r'^BRAC[-]?E[-]?(\d+(?:\.\d+)?)$', remainder)
-            if m:
-                result['brace_type'] = 'elastic'
-                result['brace_length'] = float(m.group(1))
-            else:
-                m = re.match(r'^BRAC(\d+(?:\.\d+)?)$', remainder)
-                if m:
-                    result['brace_type'] = 'chain'
-                    result['brace_length'] = float(m.group(1))
-                else:
-                    m = re.match(r'^NK(\d+)$', remainder)
-                    if m:
-                        result['chain_length'] = int(m.group(1))
-                    else:
-                        print(f"  \u26a0\ufe0f  Warning: unrecognized suffix "
-                              f"'{remainder}' on SKU '{sku_original}'.")
-
-    return result
 
 from shopIO import load_valid_sales_rows
 
@@ -280,15 +223,12 @@ def build_day_rows(order_items, order_date):
 
             # finding
             finding = parsed['finding']
-            if finding == 'LV':
-                row['LV (lever back earrings)'] += qty
-            elif finding == 'WR':
-                row['WR (fish hook earrings)'] += qty
-            elif finding == 'BP':
-                row['BP (4mm ball post studs)'] += qty
-            elif finding == 'CH':
-                row['CH (phone charm)'] += qty
-            # DK (Aether earrings) intentionally has no trends column
+            finding = parsed['finding']
+            if finding and finding in FINDINGS:
+                trend_col = FINDINGS[finding]['trend_column']
+                if trend_col:
+                    row[trend_col] += qty
+            # DK intentionally has no trends column (trend_column is None)
 
             # necklace
             if parsed['chain_length'] is not None:

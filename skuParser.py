@@ -1,187 +1,284 @@
-# SKU Parser - Unified Architecture (Draft 5)
+#!/usr/bin/env python3
+"""
+SKU Parser - Pyrrhic Silva Shop (Unified)
 
+parse_sku(sku) is the single source of truth for decomposing a SKU string.
+It returns a plain dict describing the SKU's structure -- prefix, design,
+suffix category/length, and (crucially for costing) 'base_sku', the exact
+lowercased substring that is used as a literal key into RecipesData.csv.
+
+readable_description(sku_or_parsed) builds a human-readable sentence on
+top of parse_sku()'s output. It exists purely for the CLI / human-facing
+side of things; it does not re-parse anything.
+
+skuCostLookup.py and salesToTrendsGen.py both call parse_sku() and use
+only the pieces they need -- neither re-implements SKU parsing itself.
+"""
+
+import re
 from skuVocab import (
-    BEAD_PREFIXES as _BEAD, STANDALONE_PREFIXES as _STANDALONE, DESIGNS,
-    SEASON_NAMES, AETHER_ELEMENTS, CC_COLORS, KYO_COLORS, FINDINGS,
+    BEAD_PREFIXES, STANDALONE_PREFIXES, DESIGNS,
+    SEASON_NAMES, AETHER_ELEMENTS, CC_COLORS, KYO_COLORS,
+    FINDINGS, TART_INFO,
 )
 
-# skuParser needs code -> description only; derive it from the vocabulary.
-BEAD_PREFIXES = {**{k: v[0] for k, v in _BEAD.items()},
-                  **{k: v[0] for k, v in _STANDALONE.items()}}
+# ---------------------------------------------------------------------
+# Prefix matching: longest-first so no prefix can accidentally be a
+# substring-match of a longer one (none currently collide, but this is
+# free insurance).
+# ---------------------------------------------------------------------
+_ALL_PREFIXES = sorted(set(BEAD_PREFIXES) | set(STANDALONE_PREFIXES),
+                       key=len, reverse=True)
 
-MIDDLE_VARIATIONS = {
-    **{k: v[0] for k, v in SEASON_NAMES.items()},
-    **{k: v[0] for k, v in KYO_COLORS.items()},
-    **{k: v[0] for k, v in AETHER_ELEMENTS.items()},
-    **{k: v[0] for k, v in CC_COLORS.items()},
-    **{k: v[0] for k, v in DESIGNS.items()},
-}
 
-SUFFIX_FINDINGS = {k: v['description'] for k, v in FINDINGS.items()}
+def _design_map_for_prefix(prefix):
+    """Which vocab dict holds the valid design tokens for this prefix."""
+    if prefix == 'AETHER':
+        return AETHER_ELEMENTS
+    if prefix == 'SEASONS':
+        return SEASON_NAMES
+    if prefix == 'CC':
+        return CC_COLORS
+    if prefix == 'KYO':
+        return KYO_COLORS
+    if prefix in BEAD_PREFIXES:
+        return DESIGNS
+    return None
 
-# Suffix patterns for NK and BRAC
-SUFFIX_PATTERNS = [
-    ('BRAC_E', r'BRAC[-]?e[-]?(\d+(?:\.\d+)?)$', 'elastic', None),
-    ('BRAC_CHAIN', r'BRAC(\d+(?:\.\d+)?)$', 'chain', None),
-    ('NK', r'NK(\d+)$', None, int),
-]
 
-TART_VALUES = {'1': 'earring (single)', '2': 'earrings (pair)'}
+# ---------------------------------------------------------------------
+# Suffix detection -- data-driven for findings (LV/WR/BP/DK/CH, straight
+# from skuVocab.FINDINGS, so a new finding type needs zero changes here).
+# NK/BRAC/BRAC-e stay as explicit regexes: the trailing number is not a
+# vocabulary code, it's a length the customer/you choose per listing.
+# ---------------------------------------------------------------------
+def _finding_patterns():
+    patterns = []
+    for code in FINDINGS:
+        if code == 'CH':
+            patterns.append((code, re.compile(r'-ch(?:-[a-z]+)?$')))
+        else:
+            patterns.append((code, re.compile(rf'-{code.lower()}$')))
+    return patterns
+
+
+_FINDING_PATTERNS = _finding_patterns()
+_BRAC_E_PATTERN = re.compile(r'-brac-e(\d+(?:\.\d+)?)$')
+_BRAC_PATTERN = re.compile(r'-brac(\d+(?:\.\d+)?)$')
+_NK_PATTERN = re.compile(r'-nk(\d+)$')
+
+
+def _match_suffix(sku_lower):
+    """Find the trailing suffix on a lowercased SKU string.
+    Returns {'category', 'length', 'start'} or None if there's no suffix
+    (e.g. a bare master-recipe key like '4b-rain6')."""
+    for code, pattern in _FINDING_PATTERNS:
+        m = pattern.search(sku_lower)
+        if m:
+            return {'category': code, 'length': None, 'start': m.start()}
+
+    m = _BRAC_E_PATTERN.search(sku_lower)
+    if m:
+        raw = m.group(1)
+        return {'category': 'BRAC-E',
+                'length': float(raw) if '.' in raw else int(raw),
+                'start': m.start()}
+
+    m = _BRAC_PATTERN.search(sku_lower)
+    if m:
+        raw = m.group(1)
+        return {'category': 'BRAC',
+                'length': float(raw) if '.' in raw else int(raw),
+                'start': m.start()}
+
+    m = _NK_PATTERN.search(sku_lower)
+    if m:
+        return {'category': 'NK', 'length': int(m.group(1)), 'start': m.start()}
+
+    return None
+
 
 def parse_sku(sku_input):
-    """Parse a SKU string into its components."""
+    """Parse a SKU string into its structural components.
+
+    Returns a dict:
+      sku, error (None or message)
+      base_sku      -- the exact lowercased recipe-key substring
+      prefix        -- e.g. '4B', 'AETHER', 'KYO' (or None)
+      design        -- e.g. 'RAIN6', 'ANEMO', 'RED' (or None)
+      category      -- 'LV'/'WR'/'BP'/'DK'/'CH'/'NK'/'BRAC'/'BRAC-E'/'TART'/None
+      length        -- numeric length for NK/BRAC/BRAC-E (or None)
+      tart_n        -- 1 or 2 for TART items (or None)
+      is_standalone -- True for items like '10-13-star' with no prefix scheme
+      unmatched_design_token -- a design-looking token that wasn't found in
+                                 skuVocab (worth adding there), or None
+    """
     sku_original = sku_input.strip()
-    sku = sku_input.strip().upper()
-    
-    import re
-    
-    # == Step 1: Check for TART (standalone, no suffixes) ==
-    tart_match = re.match(r'^TART-(\d+)$', sku)
-    if tart_match:
-        n_val = tart_match.group(1)
+    if not sku_original:
+        return {'sku': sku_original, 'error': 'Empty SKU.'}
+
+    sku_upper = sku_original.upper()
+    sku_lower = sku_original.lower()
+
+    # -- TART-1 / TART-2: standalone, no prefix/design/finding scheme --
+    m = re.match(r'^TART-(\d+)$', sku_upper)
+    if m:
         return {
-            'sku': sku_original,
-            'formatted_description': f"Tartaglia cosplay {TART_VALUES.get(n_val, 'unknown')}",
+            'sku': sku_original, 'error': None,
+            'base_sku': 'tart', 'prefix': None, 'design': None,
+            'category': 'TART', 'length': None, 'tart_n': int(m.group(1)),
+            'is_standalone': False, 'unmatched_design_token': None,
         }
-    
-    # == Step 2: Find matching base prefix ==
+
+    # -- 10-13-star: standalone, no naming scheme of its own yet --
+    if sku_upper == '10-13-STAR':
+        return {
+            'sku': sku_original, 'error': None,
+            'base_sku': '10-13-star', 'prefix': None, 'design': None,
+            'category': None, 'length': None, 'tart_n': None,
+            'is_standalone': True, 'unmatched_design_token': None,
+        }
+
+    # -- bead-style or standalone prefix --
     matched_prefix = None
-    remainder = None
-    
-    for prefix in BEAD_PREFIXES:
-        if sku.startswith(prefix + '-') or sku == prefix:
+    for prefix in _ALL_PREFIXES:
+        if sku_upper == prefix or sku_upper.startswith(prefix + '-'):
             matched_prefix = prefix
-            remainder = sku[len(prefix):].strip('-')
             break
-    
+
     if not matched_prefix:
-        return {'error': f'Could not parse SKU: {sku_original}. Check the SKU format.'}
-    
-    # == Step 3: Parse middle variation (UNIFIED FOR ALL PREFIX TYPES) ==
-    middle_variation = None
-    variation_desc = None
-    
-    if remainder:
-        for var in MIDDLE_VARIATIONS:
-            if remainder.startswith(var):
-                middle_variation = var
-                variation_desc = MIDDLE_VARIATIONS[var]
-                remainder = remainder[len(var):].strip('-')
-                break
-    
-    # == Step 4: Parse suffix (finding or spec pattern) ==
-    finding = None
-    chain_length = None
-    brace_length = None
-    brace_type = None
-    
-    if remainder:
-        # CHECK 1: Is remainder exactly a finding?
-        if remainder in SUFFIX_FINDINGS:
-            finding = remainder
-            remainder = ''
-        # CHECK 2: Is remainder ending with a finding?
+        return {'sku': sku_original,
+                'error': f"Could not parse SKU: no known prefix found in '{sku_original}'."}
+
+    # -- suffix: matched against the FULL string, independent of the
+    #    prefix/design step below, so an unrecognized design token can
+    #    never break finding detection. --
+    suffix = _match_suffix(sku_lower)
+    if suffix:
+        base_sku = sku_lower[:suffix['start']]
+        category = suffix['category']
+        length = suffix['length']
+        suffix_start_in_upper = suffix['start']
+    else:
+        base_sku = sku_lower
+        category = None
+        length = None
+        suffix_start_in_upper = len(sku_upper)
+
+    # -- design token: exact match against the prefix-appropriate vocab
+    #    dict, so 'ACE4' can never be misread as its alias 'ACE'. --
+    middle = sku_upper[len(matched_prefix):suffix_start_in_upper].strip('-')
+    design = None
+    unmatched_design_token = None
+    if middle:
+        design_map = _design_map_for_prefix(matched_prefix)
+        first_token = middle.split('-')[0]
+        if design_map and first_token in design_map:
+            design = first_token
         else:
-            finding_match = re.match(r'^(.+)-?(LV|WR|BP|CH)$', remainder)
-            if finding_match:
-                middle_part = finding_match.group(1).strip('-')
-                finding = finding_match.group(2)
-                # If we got a middle part we didn't expect, treat as unknown design
-                if middle_part and middle_variation is None:
-                    # Unexpected design token before finding
-                    pass
-                remainder = ''
-            else:
-                # CHECK 3: Spec patterns (BRAC, NK)
-                for _name, pattern, brace_val, chain_val in SUFFIX_PATTERNS:
-                    spec_match = re.search(f'{pattern}$', remainder, re.IGNORECASE)
-                    if spec_match:
-                        remainder = remainder[:spec_match.start()]
-                        if brace_val:
-                            brace_length = float(spec_match.group(1))
-                            brace_type = brace_val
-                        elif chain_val:
-                            chain_length = chain_val(spec_match.group(1))
-                        break
-    
-    # == Step 5: Build description ==
-    desc_parts = []
-    
-    # Add prefix description
-    prefix_desc = BEAD_PREFIXES.get(matched_prefix, matched_prefix.lower())
-    desc_parts.append(prefix_desc)
-    
-    # Add middle variation description (uniform for ALL types)
-    if middle_variation:
-        # Special formatting for certain types
-        if matched_prefix == 'AETHER':
+            unmatched_design_token = first_token
+
+    return {
+        'sku': sku_original, 'error': None,
+        'base_sku': base_sku, 'prefix': matched_prefix, 'design': design,
+        'category': category, 'length': length, 'tart_n': None,
+        'is_standalone': False, 'unmatched_design_token': unmatched_design_token,
+    }
+
+
+# ---------------------------------------------------------------------
+# Human-readable description -- built entirely from parse_sku()'s output.
+# ---------------------------------------------------------------------
+def _prefix_description(prefix):
+    if prefix in BEAD_PREFIXES:
+        return BEAD_PREFIXES[prefix][0]
+    if prefix in STANDALONE_PREFIXES:
+        return STANDALONE_PREFIXES[prefix][0]
+    return prefix.lower() if prefix else ''
+
+
+def _design_description(prefix, design_code):
+    design_map = _design_map_for_prefix(prefix)
+    if design_map and design_code in design_map:
+        return design_map[design_code][0]
+    return design_code
+
+
+def readable_description(sku_or_parsed):
+    """Accepts either a raw SKU string or an already-parsed dict from
+    parse_sku(), so callers who already have the parsed structure (e.g.
+    skuCostLookup) don't have to parse twice."""
+    parsed = parse_sku(sku_or_parsed) if isinstance(sku_or_parsed, str) else sku_or_parsed
+
+    if parsed.get('error'):
+        return f"Error: {parsed['error']}"
+
+    if parsed['category'] == 'TART':
+        n = parsed['tart_n']
+        if n == 1:
+            return TART_INFO['description_single']
+        if n == 2:
+            return TART_INFO['description_pair']
+        return f"Tartaglia cosplay earrings (unrecognized count: {n})"
+
+    if parsed.get('is_standalone'):
+        return f"{parsed['base_sku']} (standalone item; no description template defined yet)"
+
+    prefix = parsed['prefix']
+    desc_parts = [_prefix_description(prefix)]
+
+    if parsed['design']:
+        variation_desc = _design_description(prefix, parsed['design'])
+        if prefix == 'AETHER':
             desc_parts[-1] += f' ({variation_desc}) cosplay'
-        elif matched_prefix == 'SEASONS':
+        elif prefix == 'SEASONS':
             desc_parts.append(f"{variation_desc} themed cottage-core")
-        elif matched_prefix == 'KYO':
-            desc_parts.append(f"({variation_desc})")
-        elif matched_prefix == 'CC':
+        elif prefix in ('KYO', 'CC'):
             desc_parts.append(f"({variation_desc})")
         else:
             desc_parts.append(variation_desc)
-    
-    # Add specs (finding OR chain OR bracelet)
-    if finding:
-        finding_desc = SUFFIX_FINDINGS[finding]
-        desc_parts.append(finding_desc)
-        if matched_prefix != 'AETHER' and finding != 'CH':
-            desc_parts[-1] += 's'  # Plural for non-Aether earring items
-    
-    elif chain_length is not None:
-        if chain_length == 0:
-            desc_parts.append('necklace charm with bail only')
-        else:
-            desc_parts.append(f'necklace with {chain_length}-inch chain')
-    
-    elif brace_length is not None:
-        if brace_type == 'elastic':
-            desc_parts.append(f'elastic bracelet ({brace_length}-inch long)')
-        else:
-            desc_parts.append(f'chain bracelet or choker ({brace_length}-inch long)')
-    
-    formatted_desc = ' '.join(desc_parts)
-    
-    return {
-        'sku': sku_original,
-        'matched_prefix': matched_prefix,
-        'middle_variation': middle_variation,
-        'finding': finding,
-        'chain_length': chain_length,
-        'brace_length': brace_length,
-        'brace_type': brace_type,
-        'formatted_description': formatted_desc,
-    }
+
+    category = parsed['category']
+    if category in FINDINGS:
+        desc_parts.append(FINDINGS[category]['description'])
+        if prefix != 'AETHER' and category != 'CH':
+            desc_parts[-1] += 's'
+    elif category == 'NK':
+        length = parsed['length']
+        desc_parts.append('necklace charm with bail only' if length == 0
+                           else f'necklace with {length}-inch chain')
+    elif category == 'BRAC-E':
+        desc_parts.append(f"elastic bracelet ({parsed['length']}-inch long)")
+    elif category == 'BRAC':
+        desc_parts.append(f"chain bracelet or choker ({parsed['length']}-inch long)")
+
+    if parsed.get('unmatched_design_token'):
+        desc_parts.append(f"[unrecognized design token: {parsed['unmatched_design_token']}]")
+
+    return ' '.join(desc_parts)
+
 
 def main():
     print("=" * 60)
     print("SKU PARSER - Pyrrhic Silva Shop")
     print("=" * 60)
     print("\nEnter a SKU (or 'quit' to exit):\n")
-    
+
     while True:
         user_input = input(">>> ").strip()
-        
         if user_input.lower() in ['quit', 'exit', 'q']:
             print("\nGoodbye!\n")
             break
-        
         if not user_input:
             continue
-        
-        result = parse_sku(user_input)
-        
-        if 'error' in result:
-            print(f"\n❌ {result['error']}\n")
+
+        parsed = parse_sku(user_input)
+        if parsed.get('error'):
+            print(f"\n❌ {parsed['error']}\n")
         else:
-            print(f"\n✅ SKU: {result['sku']}")
-            print(f"   {result['formatted_description']}")
-    
-    print()
+            print(f"\n✅ SKU: {parsed['sku']}")
+            print(f"   {readable_description(parsed)}\n")
+
 
 if __name__ == "__main__":
     main()

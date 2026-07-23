@@ -8,14 +8,11 @@ re-parsed string, so there's a single source of truth for what a SKU's
 ending means -- no separate dictionaries that have to agree on casing.
 """
 
-import csv
-import re
-import difflib
 from skuVocab import FINDINGS, TART_INFO
+from skuParser import parse_sku
 from shopIO import load_inventory, load_recipes
+import difflib
 
-# Packaging by suffix category. NK is split into "charm on a bail" (length 0)
-# and "actual chain" (length > 0) further down, since they ship differently.
 PACKAGING_RULES = {
     **{code: info['packaging'] for code, info in FINDINGS.items()},
     'NK': ('chain-card', 1),
@@ -24,52 +21,15 @@ PACKAGING_RULES = {
     None: ('bag', 1),
 }
 
-# charm/finding quantity multipliers by suffix category.
-# LV/WR/BP produce a pair of earrings, so charm+finding materials double.
-# DK (Aether-style) and everything else is sold as a single piece.
 SUFFIX_MULTIPLIERS = {
     **{code: {'charm': info['charm_mult'], 'finding': info['finding_mult']}
        for code, info in FINDINGS.items()},
     'NK': {'charm': 1, 'finding': 1},
-    'NK0': {'charm': 1, 'finding': 1},
     'TART': {'charm': 2, 'finding': 0},
     None: {'charm': 1, 'finding': 0},
 }
 
-# Suffix patterns, checked in order, against the lowercased SKU.
-# BRAC-E must be checked before BRAC so "-brac-e6.5" doesn't get eaten by
-# the plainer "-brac" pattern.
-SUFFIX_PATTERNS = [
-    ('LV', r'-lv$'),
-    ('WR', r'-wr$'),
-    ('BP', r'-bp$'),
-    ('DK', r'-dk$'),
-    ('CH', r'-ch(?:-[a-z]+)?$'),
-    ('BRAC-E', r'-brac-e(\d+(?:\.\d+)?)$'),
-    ('BRAC', r'-brac(\d+(?:\.\d+)?)$'),
-    ('NK', r'-nk(\d+(?:\.\d+)?)$'),
-]
-
 NOT_IMPLEMENTED_CATEGORIES = {'BRAC', 'BRAC-E'}
-
-def parse_suffix(sku_lower):
-    """Return {'category': str, 'length': float|int|None, 'start': int} or
-    None if no known suffix pattern matches. 'start' is where the suffix
-    begins in sku_lower, so the caller can slice off the base SKU."""
-    if sku_lower.startswith('tart-'):
-        return {'category': 'TART', 'length': None, 'start': 0}
-
-    for category, pattern in SUFFIX_PATTERNS:
-        match = re.search(pattern, sku_lower)
-        if match:
-            length = None
-            if match.groups():
-                raw = match.group(1)
-                length = float(raw) if '.' in raw else int(raw)
-            return {'category': category, 'length': length, 'start': match.start()}
-
-    return None
-
 
 def calculate_material_cost(material_id, quantity, inventory):
     if material_id not in inventory:
@@ -142,71 +102,78 @@ def calculate_packaging_cost(pkg_key, pkg_qty, inventory, recipes):
 
 def calculate_cost(sku, inventory, recipes):
     sku_original = sku.strip()
-    sku_lower = sku_original.lower()
 
     result = {
-        'sku': sku_original,
-        'category': None,
-        'length': None,
-        'charm_cost': 0.0,
-        'finding_cost': 0.0,
-        'combined_finding_cost': 0.0,  # finding + chain
-        'packaging_cost': 0.0,
-        'total_cost': 0.0,
-        'breakdown': [],
+        'sku': sku_original, 'category': None, 'length': None,
+        'charm_cost': 0.0, 'finding_cost': 0.0, 'combined_finding_cost': 0.0,
+        'packaging_cost': 0.0, 'total_cost': 0.0, 'breakdown': [],
     }
 
-    parsed = parse_suffix(sku_lower)
-
-    if parsed is None:
-        result['error'] = (
-            f"Could not recognize a suffix on '{sku_original}'. "
-            "Expected one of: LV, WR, BP, DK, CH, NK[n], BRAC[n], "
-            "BRAC-e[n], or TART-1/TART-2."
-        )
+    parsed = parse_sku(sku_original)
+    if parsed.get('error'):
+        result['error'] = parsed['error']
         return result
 
     category = parsed['category']
     length = parsed['length']
+    base_sku = parsed['base_sku']
     result['category'] = category
     result['length'] = length
 
-    # -- TART is a fully separate recipe shape (single vs. pair), unrelated
-    #    to the charm-recipe-lookup flow everything else uses.
     if category == 'TART':
-        tart_num = 2 if sku_lower.endswith('-2') else 1
-        recipe_key = 'tart'
-
-        if recipe_key not in recipes:
-            result['error'] = f"No recipe found for '{recipe_key}'"
+        tart_n = parsed['tart_n']
+        if 'tart' not in recipes:
+            result['error'] = "No recipe found for 'tart'"
             return result
-
-        materials = recipes[recipe_key]
+        materials = recipes['tart']
         charm_mult = SUFFIX_MULTIPLIERS['TART']['charm']
         total = 0.0
-
         for mat_id, qty in materials.items():
-            qty_multiplied = qty * charm_mult if tart_num == 2 else qty
-            cost, mat = calculate_material_cost(mat_id, qty_multiplied, inventory)
+            qty_mult = qty * charm_mult if tart_n == 2 else qty
+            cost, mat = calculate_material_cost(mat_id, qty_mult, inventory)
             total += cost
             result['breakdown'].append({
                 'category': 'charm', 'material_id': mat_id,
                 'material_label': material_label(mat_id, mat),
-                'quantity': qty_multiplied, 'cost': round(cost, 4),
+                'quantity': qty_mult, 'cost': round(cost, 4),
             })
-
         pkg_key, pkg_qty = PACKAGING_RULES['TART']
         pkg_cost, pkg_items = calculate_packaging_cost(pkg_key, pkg_qty, inventory, recipes)
         total += pkg_cost
         result['breakdown'].extend(pkg_items)
-
         result['charm_cost'] = round(total - pkg_cost, 4)
         result['packaging_cost'] = round(pkg_cost, 4)
         result['total_cost'] = round(total, 4)
         return result
 
-    # -- Bracelets: acknowledged as not yet implemented rather than
-    #    silently returning $0.
+    if category is None:
+        if parsed.get('is_standalone'):
+            if base_sku not in recipes:
+                result['error'] = f"No recipe found for '{base_sku}'"
+                return result
+            total = 0.0
+            for mat_id, qty in recipes[base_sku].items():
+                cost, mat = calculate_material_cost(mat_id, qty, inventory)
+                total += cost
+                result['breakdown'].append({
+                    'category': 'charm', 'material_id': mat_id,
+                    'material_label': material_label(mat_id, mat),
+                    'quantity': qty, 'cost': round(cost, 4),
+                })
+            pkg_key, pkg_qty = PACKAGING_RULES[None]
+            pkg_cost, pkg_items = calculate_packaging_cost(pkg_key, pkg_qty, inventory, recipes)
+            total += pkg_cost
+            result['breakdown'].extend(pkg_items)
+            result['charm_cost'] = round(total - pkg_cost, 4)
+            result['packaging_cost'] = round(pkg_cost, 4)
+            result['total_cost'] = round(total, 4)
+            return result
+        result['error'] = (
+            f"Could not recognize a suffix on '{sku_original}'. Expected one of: "
+            f"{', '.join(FINDINGS.keys())}, NK[n], BRAC[n], BRAC-e[n], or TART-1/TART-2."
+        )
+        return result
+
     if category in NOT_IMPLEMENTED_CATEGORIES:
         result['not_implemented'] = True
         result['message'] = (
@@ -214,9 +181,6 @@ def calculate_cost(sku, inventory, recipes):
             f"'{sku_original}' was not calculated."
         )
         return result
-
-    # -- Everything else: strip the suffix off to find the base charm recipe.
-    base_sku = sku_lower[:parsed['start']]
 
     if base_sku not in recipes:
         suggestions = suggest_recipe_keys(base_sku, recipes)
@@ -227,12 +191,7 @@ def calculate_cost(sku, inventory, recipes):
 
     charm_recipe = recipes[base_sku]
     multipliers = SUFFIX_MULTIPLIERS.get(category, SUFFIX_MULTIPLIERS[None])
-
-    # AETHER cosplay earrings are always sold as a single earring, never a
-    # pair -- unlike LV/WR/BP items in general, which double for a pair.
-    # TART is the other single-vs-pair exception, but it's handled
-    # separately above since it branches on '-1'/'-2' rather than a finding.
-    if base_sku.startswith('aether-'):
+    if parsed['prefix'] == 'AETHER':
         multipliers = {'charm': 1, 'finding': 1}
 
     charm_multiplier = multipliers['charm']
@@ -251,8 +210,6 @@ def calculate_cost(sku, inventory, recipes):
     chain_cost = 0.0
 
     if category == 'NK':
-        # Every necklace -- charm-on-a-bail or full chain -- uses the bail
-        # from the 'nk0' recipe.
         if 'nk0' in recipes:
             for mat_id, qty in recipes['nk0'].items():
                 cost, mat = calculate_material_cost(mat_id, qty * finding_multiplier, inventory)
@@ -262,10 +219,6 @@ def calculate_cost(sku, inventory, recipes):
                     'material_label': material_label(mat_id, mat),
                     'quantity': qty * finding_multiplier, 'cost': round(cost, 4),
                 })
-
-        # A real chain length additionally needs the jump rings + clasp
-        # ('nk[n]' recipe, a template -- not looked up by literal length)
-        # and the physical chain cost.
         if length and length > 0:
             if 'nk[n]' in recipes:
                 for mat_id, qty in recipes['nk[n]'].items():
@@ -276,7 +229,6 @@ def calculate_cost(sku, inventory, recipes):
                         'material_label': material_label(mat_id, mat),
                         'quantity': qty * finding_multiplier, 'cost': round(cost, 4),
                     })
-
             chain_cost, chain_mat = calculate_chain_cost(length, inventory)
             if chain_mat:
                 result['breakdown'].append({
@@ -285,12 +237,8 @@ def calculate_cost(sku, inventory, recipes):
                     'quantity': f"{length} in", 'cost': round(chain_cost, 4),
                     'note': f'{length}-inch chain',
                 })
-
         packaging_rule = PACKAGING_RULES['NK'] if length else PACKAGING_RULES['NK0']
-
     else:
-        # LV, WR, BP, DK, CH: finding recipe is keyed by the lowercase
-        # category itself.
         finding_recipe_key = category.lower()
         if finding_recipe_key in recipes:
             for mat_id, qty in recipes[finding_recipe_key].items():
@@ -315,7 +263,6 @@ def calculate_cost(sku, inventory, recipes):
     result['total_cost'] = round(
         result['charm_cost'] + result['combined_finding_cost'] + result['packaging_cost'], 4
     )
-
     return result
 
 

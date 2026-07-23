@@ -42,11 +42,12 @@ BEAD_PREFIXES = {
 # sub-column (e.g. KYO has no bare "KYO" column -- only KYO-Red/KYO-Black).
 # ---------------------------------------------------------------------
 STANDALONE_PREFIXES = {
-    'AETHER':  ('Aether',                          'AETHER'),
+    'AETHER':  ('Aether',                           'AETHER'),
     'CC':      ('Christmas candy cane',             'CC (Candy-Cane)'),
     'HOWLS':   ("Howl's Moving Castle cosplay",     'HOWLS'),
     'SEASONS': ('Seasons:',                         'SEASONS'),
     'KYO':     ('Kyo Soma',                         None),
+    '10-13-STAR': ('twin shooting star chain',      '10-13-STAR'),
 }
 
 # ---------------------------------------------------------------------
@@ -58,8 +59,8 @@ STANDALONE_PREFIXES = {
 # the trends CSV column is spelled MULTIG. Both scripts used to 
 # assume the column name equals the code, so this sale was silently
 # undercounted. Centralizing the mapping here fixes that for good.
-# additionally, ACE, CETERO, BI, and TRANS are old aliases that resolve 
-# to their new proper name
+# Additionally, ACE, CETERO, BI, and TRANS are old aliases that resolve 
+# to their new proper name 
 # ---------------------------------------------------------------------
 DESIGNS = {
     'RAIN6':   ('6-stripe rainbow flag',                 'RAIN6'),
@@ -202,10 +203,6 @@ TART_INFO = {
     'packaging': ('ear-card', 1),
 }
 
-TEN_THIRTEEN_STAR = {
-    'trend_column': '10-13-STAR',
-}
-
 NK_INFO = {
     'description': 'necklace',
     'trend_column': 'NK (necklace)',
@@ -285,7 +282,6 @@ def all_expected_trend_columns():
             cols.add(entry['trend_column'])
 
     cols.add(TART_INFO['trend_column'])
-    cols.add(TEN_THIRTEEN_STAR['trend_column'])
     cols.add(NK_INFO['trend_column'])
     cols.add(NK_INFO['length_trend_column'])
     cols.add(BRACELET_INFO['chain']['trend_column'])
