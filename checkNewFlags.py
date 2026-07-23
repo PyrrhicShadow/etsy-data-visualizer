@@ -3,17 +3,20 @@
 checkNewFlags.py - Pyrrhic Silva Shop
 
 Scans RecipesData.csv for 4b-[flag] entries and compares the flag codes
-against skuVocab.DESIGNS. Run this BEFORE recipeGen4B.py when starting the
-"add new recipes" workflow, so you know up front whether skuVocab.py (and
-skuKey.txt) need a new entry before you generate 4C/6P/8R equivalents.
+against skuVocab.DESIGNS, in BOTH directions:
 
-WHY THIS IS A SEPARATE SCRIPT (not folded into recipeGen4B.py):
-recipeGen4B.py's job is translating an EXISTING 4b-[flag] recipe into its
-4C/6P/8R equivalents. This script's job is validating that the flag code
-even exists in the vocabulary before you get that far. Different concern,
-different script -- same reasoning as why skuVocab.py's own
-validate_against_trend_columns() is a separate function rather than being
-folded into salesToTrendsGen.py's main().
+  1. Recipe -> vocab: flag codes used in RecipesData.csv that aren't in
+     skuVocab.DESIGNS at all (NEW), or that are recognized only as a
+     non-canonical alias/misspelling (e.g. 'BI' instead of 'BI3').
+     Run this BEFORE recipeGen4B.py when starting the "add new recipes"
+     workflow, so you know up front whether skuVocab.py (and skuKey.txt)
+     need a new entry before you generate 4C/6P/8R equivalents.
+
+  2. Vocab -> recipe: designs already in skuVocab.DESIGNS that have no
+     4b-[flag] recipe yet under any of their known code spellings. This
+     is the more common direction in practice, since skuVocab.py is
+     where new designs tend to get added first. Not an error -- just a
+     checklist of what still needs a recipe.
 
 HOW "NEW" VS "NON-CANONICAL" IS DETERMINED:
 skuVocab.DESIGNS maps code -> (description, trend_column). For canonical
@@ -76,6 +79,46 @@ def extract_4b_flags(skus):
                 continue
             flags.setdefault(flag, []).append(sku)
     return flags
+
+
+def group_designs_by_trend_column(designs):
+    """Group DESIGNS entries by trend_column (the actual design identity),
+    since multiple codes can point at the same design (e.g. BI/BI3 both
+    -> BI3, TRANS/TRANS3/TRANS5 -> TRANS3/TRANS5 respectively).
+
+    Returns dict trend_column -> {'codes': set of all codes for it,
+    'canonical': the code where code == trend_column (or None if somehow
+    absent), 'description': description text from the canonical code, or
+    from whichever code is available if no canonical one exists}.
+    """
+    groups = {}
+    for code, (desc, trend_col) in designs.items():
+        group = groups.setdefault(trend_col, {'codes': set(), 'canonical': None, 'description': None})
+        group['codes'].add(code)
+        if code.upper() == trend_col.upper():
+            group['canonical'] = code
+            group['description'] = desc
+        elif group['description'] is None:
+            group['description'] = desc
+    return groups
+
+
+def find_unused_designs(found_flags, designs):
+    """Return dict trend_column -> group info (codes/canonical/description)
+    for every design in skuVocab.DESIGNS that has NO 4b- recipe yet under
+    ANY of its known code spellings.
+
+    found_flags is the same dict extract_4b_flags() returns: flag_code
+    (already uppercase) -> list of source SKUs. Only the keys matter here.
+    """
+    found_set = set(found_flags.keys())
+    groups = group_designs_by_trend_column(designs)
+
+    unused = {}
+    for trend_col, group in groups.items():
+        if not (group['codes'] & found_set):
+            unused[trend_col] = group
+    return unused
 
 
 def classify_flags(found_flags, designs):
@@ -143,6 +186,23 @@ def main():
         print("  using the canonical code for new recipes going forward.")
 
     print(f"\n\u2713 {len(canonical)} flag(s) already canonical, no action needed.")
+
+    print("\n" + "-" * 60)
+    unused = find_unused_designs(found_flags, DESIGNS)
+    if unused:
+        print(f"\n\U0001F4CB IN skuVocab.py BUT NO 4b- RECIPE YET ({len(unused)}):")
+        for trend_col in sorted(unused):
+            group = unused[trend_col]
+            label = group['canonical'] or trend_col
+            other_codes = group['codes'] - {label}
+            alias_note = f"  (aliases: {', '.join(sorted(other_codes))})" if other_codes else ""
+            print(f"  \u2022 {label} - {group['description']}{alias_note}")
+        print("\n  This is normal if you just haven't gotten to these yet -- it's")
+        print("  not an error. Useful as a checklist of designs still needing a")
+        print("  4b-[flag] recipe added to RecipesData.csv.")
+    else:
+        print("\n\u2705 Every design in skuVocab.py already has at least one 4b- recipe.")
+
     print()
 
 
