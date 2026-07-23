@@ -1,55 +1,23 @@
-import csv
-from datetime import datetime
 from collections import defaultdict
+from shopIO import load_valid_sales_rows, earliest_dates_by_order
 
 def analyze_sales_by_day_of_week():
-    file_path = input("Enter the file path: ").strip()
-    
-    # Map day numbers to names (0 = Monday, 6 = Sunday)
+    sales_path = input("Enter path to sales CSV (or Enter for PyrrhicSilvaShopSales.csv): ").strip()
+    if not sales_path:
+        sales_path = 'PyrrhicSilvaShopSales.csv'
+
     DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    
-    # Store order_number -> earliest date
-    order_to_date = {}
-    
+
     try:
-        with open(file_path, 'r', newline='', encoding='utf-8-sig') as csvfile:
-            reader = csv.DictReader(csvfile)
-            
-            for row in reader:
-                date_str = row.get('date', '').strip().strip('"').strip("'")
-                order_num = row.get('order number', '').strip().strip('"').strip("'")
-                quantity_str = row.get('item quantity', '').strip().strip('"').strip("'")
-                
-                # Skip rows without valid data
-                if not date_str or not order_num:
-                    continue
-                
-                # Filter: Only process actual orders (quantity >= 1)
-                try:
-                    quantity = int(quantity_str)
-                    if quantity < 1:
-                        continue  # Skip cancellations/refunds
-                except ValueError:
-                    print(f"Warning: Invalid quantity '{quantity_str}', skipping...")
-                    continue
-                
-                try:
-                    parsed_date = datetime.strptime(date_str, "%A, %B %d, %Y")
-                    
-                    # Keep only the earliest date for each order
-                    if order_num not in order_to_date or parsed_date < order_to_date[order_num]:
-                        order_to_date[order_num] = parsed_date
-                    
-                except ValueError as e:
-                    print(f"Warning: Could not parse date '{date_str}', skipping...")
-                    continue
-    
+        rows = load_valid_sales_rows(sales_path)
     except FileNotFoundError:
-        print(f"Error: File not found at '{file_path}'")
+        print(f"Error: File not found at '{sales_path}'")
         return
     except Exception as e:
         print(f"Error reading file: {e}")
         return
+
+    order_to_date = earliest_dates_by_order(rows)
     
     # Count orders by day of week
     day_counts = defaultdict(int)

@@ -12,6 +12,7 @@ import csv
 import re
 import difflib
 from skuVocab import FINDINGS, TART_INFO
+from shopIO import load_inventory, load_recipes
 
 # Packaging by suffix category. NK is split into "charm on a bail" (length 0)
 # and "actual chain" (length > 0) further down, since they ship differently.
@@ -50,46 +51,6 @@ SUFFIX_PATTERNS = [
 ]
 
 NOT_IMPLEMENTED_CATEGORIES = {'BRAC', 'BRAC-E'}
-
-
-def load_inventory(filename):
-    inventory = {}
-    with open(filename, 'r', encoding='utf-8-sig') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            mat_id = row['material id'].strip()
-            inventory[mat_id] = {
-                'name': row['material name'].strip(),
-                'price': float(row['price']),
-                'specific_units': float(row['specific units']),
-            }
-    return inventory
-
-
-def load_recipes(filename):
-    recipes = {}
-    with open(filename, 'r', encoding='utf-8-sig') as f:
-        for line in f:
-            parts = line.strip().split(',')
-            if len(parts) < 2:
-                continue
-
-            sku = parts[0].strip().lower()
-            materials = {}
-
-            for cell in parts[1:]:
-                cell = cell.strip()
-                if cell and '*' in cell:
-                    mat_id, qty = cell.split('*')
-                    mat_id = mat_id.strip()
-                    qty = int(qty.strip())
-                    if mat_id.isdigit():
-                        materials[mat_id] = qty
-
-            recipes[sku] = materials
-
-    return recipes
-
 
 def parse_suffix(sku_lower):
     """Return {'category': str, 'length': float|int|None, 'start': int} or

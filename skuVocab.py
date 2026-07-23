@@ -62,18 +62,18 @@ STANDALONE_PREFIXES = {
 # to their new proper name
 # ---------------------------------------------------------------------
 DESIGNS = {
-    'RAIN6':   ('6-stripe rainbow flag',                'RAIN6'),
-    'RAIN7':   ('7-stripe rainbow flag',                'RAIN7'),
-    'RAIN8':   ('8-stripe rainbow flag',                'RAIN8'),
-    'PROG':    ('progress pride flag',                  'PROG'),
+    'RAIN6':   ('6-stripe rainbow flag',                 'RAIN6'),
+    'RAIN7':   ('7-stripe rainbow flag',                 'RAIN7'),
+    'RAIN8':   ('8-stripe rainbow flag',                 'RAIN8'),
+    'PROG':    ('progress pride flag',                   'PROG'),
     'PHILLY':  ('Philadelphia rainbow flag',             'PHILLY'),
     'LESBO5':  ('5-stripe lesbian flag',                 'LESBO5'),
     'GAY5':    ('5-stripe gay man flag',                 'GAY5'),
-    'BI':     ('bisexual (mini) flag',                  'BI3'), # old alias backup
+    'BI':     ('bisexual (mini) flag',                   'BI3'), # old alias backup
     'BI3':     ('bisexual (mini) flag',                  'BI3'),
     'BI5':     ('bisexual (full) flag',                  'BI5'),
     'PAN':     ('pansexual flag',                        'PAN'),
-    'TRANS':  ('5-stripe transgender flag',             'TRANS5'), # old alias backup
+    'TRANS':  ('5-stripe transgender flag',              'TRANS5'), # old alias backup
     'TRANS3':  ('3-stripe transgender flag',             'TRANS3'),
     'TRANS5':  ('5-stripe transgender flag',             'TRANS5'),
     'GQUEER':  ('genderqueer flag',                      'GQUEER'),
@@ -81,11 +81,12 @@ DESIGNS = {
     'ENBY':    ('nonbinary flag',                        'ENBY'),
     'INTSEX':  ('intersex flag',                         'INTSEX'),
     'AROACE':  ('aroace flag',                           'AROACE'),
-    'ACE':    ('asexual flag',                          'ACE4'), # old alias backup
+    'ORAROACE':  ('oriented aroace flag',                'ORAROACE'),
+    'ACE':    ('asexual flag',                           'ACE4'), # old alias backup
     'ACE4':    ('asexual flag',                          'ACE4'),
     'ACE6':    ('asexual (ace in grace) flag',           'ACE6'),
     'ARO':     ('aromantic flag',                        'ARO'),
-    'CETERO': ('ceterosexual flag',                     'CETERO4'), # old alias backup
+    'CETERO': ('ceterosexual flag',                      'CETERO4'), # old alias backup
     'CETERO4': ('ceterosexual flag',                     'CETERO4'),
     'CETERO5': ('ceterosexual (alt) flag',               'CETERO5'),
     'MAV':     ('maverique flag',                        'MAV'),
@@ -96,9 +97,9 @@ DESIGNS = {
     'TROIS':   ('neutrois flag',                         'TROIS'),
     'OMNIS':   ('omnisexual flag',                       'OMNIS'),
     'MULTG':   ('multigender flag',                      'MULTIG'),  # see note above
-    'MULTIG':   ('multigender flag',                      'MULTIG'),
+    'MULTIG':   ('multigender flag',                     'MULTIG'),
     'MULTS':   ('multisexual flag',                      'MULTIS'),  # see note above
-    'MULTIS':   ('multisexual flag',                      'MULTIS'),
+    'MULTIS':   ('multisexual flag',                     'MULTIS'),
     'POLYG':   ('polygender flag',                       'POLYG'),
     'POLYS':   ('polysexual flag',                       'POLYS'),
     'BERRI':   ('berrisexual flag',                      'BERRI'),

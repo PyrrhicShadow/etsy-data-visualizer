@@ -1,54 +1,25 @@
-import csv
-from datetime import datetime
 from collections import defaultdict
+from shopIO import load_valid_sales_rows
 
 def analyze_order_numbers():
-    file_path = input("Enter the file path: ").strip()
-    
-    ranges = {
-        '1-10': set(),
-        '11-20': set(),
-        '21-end': set()
-    }
-    
-    # Store order_number -> list of dates
+    sales_path = input("Enter path to sales CSV (or Enter for PyrrhicSilvaShopSales.csv): ").strip()
+    if not sales_path:
+        sales_path = 'PyrrhicSilvaShopSales.csv'
+
+    ranges = {'1-10': set(), '11-20': set(), '21-end': set()}
     order_dates = defaultdict(list)
-    
+
     try:
-        with open(file_path, 'r', newline='', encoding='utf-8-sig') as csvfile:
-            reader = csv.DictReader(csvfile)
-            
-            for row in reader:
-                date_str = row.get('date', '').strip().strip('"').strip("'")
-                order_num = row.get('order number', '').strip().strip('"').strip("'")
-                quantity_str = row.get('item quantity', '').strip().strip('"').strip("'")
-                
-                # Skip rows without valid data
-                if not date_str or not order_num:
-                    continue
-                
-                # Filter: Only process actual orders (quantity >= 1)
-                try:
-                    quantity = int(quantity_str)
-                    if quantity < 1:
-                        continue  # Skip cancellations/refunds
-                except ValueError:
-                    print(f"Warning: Invalid quantity '{quantity_str}', skipping...")
-                    continue
-                
-                try:
-                    parsed_date = datetime.strptime(date_str, "%A, %B %d, %Y")
-                    order_dates[order_num].append(parsed_date.date())
-                except ValueError as e:
-                    print(f"Warning: Could not parse date '{date_str}', skipping...")
-                    continue
-    
+        rows = load_valid_sales_rows(sales_path)
     except FileNotFoundError:
-        print(f"Error: File not found at '{file_path}'")
+        print(f"Error: File not found at '{sales_path}'")
         return
     except Exception as e:
         print(f"Error reading file: {e}")
         return
+
+    for r in rows:
+        order_dates[r['order_number']].append(r['date'].date())
     
     # Now process: for each order, find earliest date and categorize
     duplicates_found = []

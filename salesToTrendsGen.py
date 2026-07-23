@@ -68,14 +68,15 @@ from datetime import datetime
 TREND_COLUMNS = [
     'date', 'items sold', '4B', '4C', '6P', '8R', 'CHD',
     'BRAC (chain bracelets & chokers)', 'BRAC-e (elastic bracelets)', 'BRAC (inches)',
-    'NK (necklace)', 'Chain (inches)', 'CH (phone charm)',
-    'LV (lever back earrings)', 'WR (fish hook earrings)', 'BP (4mm ball post studs)',
+    'NK (necklace)', 'Chain (inches)', 'CH (phone charm)', 'LV (lever back earrings)',
+    'WR (fish hook earrings)', 'BP (4mm ball post studs)',
     'RAIN7', 'RAIN6', 'RAIN8', 'PHILLY', 'PROG', 'TRANS3', 'TRANS5', 'LESBO5', 'GAY5',
-    'BI3', 'BI5', 'PAN', 'GQUEER', 'GFLUID', 'ENBY', 'INTSEX', 'AROACE', 'ARO',
-    'ACE4', 'ACE6', 'CETERO4', 'CETERO5', 'MAV', 'AGEND', 'ANGY', 'GNEUT', 'TROIS', 
+    'BI3', 'BI5', 'PAN', 'GQUEER', 'GFLUID', 'ENBY', 'INTSEX', 'AROACE', 'ORAROACE', 
+    'ARO', 'ACE4', 'ACE6', 'CETERO4', 'CETERO5', 'MAV', 'AGEND', 'ANGY', 'GNEUT', 'TROIS', 
     'OMNIS', 'MULTIG', 'MULTIS', 'POLYG', 'POLYS', 'BIGEND', 'ABRO', 'ANDRO', 'GYNE', 
-    'BERRI', 'ALMD', 'QPR', 'GAYBO', 'GFLUX', 'QUEER', 'USA', 'TART', 'HOWLS', '10-13-STAR',
-    'SEASONS', 'SEASONS-charm', 'spring', 'summer', 'fall', 'winter',
+    'BERRI', 'ALMD', 'QPR', 'GAYBO', 'GFLUX', 'QUEER', 
+    'USA', 'TART', 'HOWLS', '10-13-STAR',
+    'SEASONS', 'spring', 'summer', 'fall', 'winter',
     'CC (Candy-Cane)', 'RW', 'RWG', 'RG', 'KYO-Red', 'KYO-Black', 'KRIS', 'FRISK',
     'AETHER', 'ANEMO', 'GEO', 'ELECTRO', 'DENDRO', 'HYDRO', 'PYRO', 'CRYO', 'NONE', 'ALL',
 ]
@@ -110,7 +111,6 @@ NON_PRODUCT_TOKENS = {
 }
 
 SUFFIX_FINDINGS = {'LV', 'WR', 'BP', 'DK', 'CH'}  # CH added - see module docstring
-
 
 def parse_sku(sku_original):
     """
@@ -207,46 +207,22 @@ def parse_sku(sku_original):
 
     return result
 
+from shopIO import load_valid_sales_rows
 
 def load_valid_line_items(sales_path):
-    """
-    Returns: dict order_number -> list of (parsed_item, qty)
-             dict order_number -> earliest datetime
-    Mirrors the earliest-date logic in countOrdersDayOfWeek.py.
-    """
     order_items = defaultdict(list)
     order_date = {}
 
-    with open(sales_path, 'r', newline='', encoding='utf-8-sig') as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            date_str = (row.get('date') or '').strip().strip('"').strip("'")
-            order_num = (row.get('order number') or '').strip().strip('"').strip("'")
-            sku = (row.get('item sku') or '').strip()
-            qty_str = (row.get('item quantity') or '').strip()
+    rows = load_valid_sales_rows(sales_path)
+    for r in rows:
+        parsed = parse_sku(r['sku'])
+        if parsed is None or parsed.get('error'):
+            continue
 
-            if not date_str or not order_num:
-                continue
-            try:
-                qty = int(qty_str)
-            except ValueError:
-                continue
-            if qty < 1:
-                continue  # cancellations / refunds
-
-            try:
-                parsed_date = datetime.strptime(date_str, "%A, %B %d, %Y")
-            except ValueError:
-                print(f"  \u26a0\ufe0f  Warning: could not parse date '{date_str}', skipping row.")
-                continue
-
-            parsed = parse_sku(sku)
-            if parsed is None or parsed.get('error'):
-                continue
-
-            order_items[order_num].append((parsed, qty))
-            if order_num not in order_date or parsed_date < order_date[order_num]:
-                order_date[order_num] = parsed_date
+        order_items[r['order_number']].append((parsed, r['quantity']))
+        onum = r['order_number']
+        if onum not in order_date or r['date'] < order_date[onum]:
+            order_date[onum] = r['date']
 
     return order_items, order_date
 
@@ -466,10 +442,6 @@ def main():
     if not sales_path:
         sales_path = 'PyrrhicSilvaShopSales.csv'
 
-    output_path = input("Enter output path (or Enter for TrendsGenerated.csv): ").strip()
-    if not output_path:
-        output_path = 'TrendsGenerated.csv'
-
     print(f"\nReading {sales_path} ...")
     order_items, order_date = load_valid_line_items(sales_path)
     print(f"  \u2713 {len(order_items)} orders with valid line items")
@@ -477,18 +449,23 @@ def main():
     days = build_day_rows(order_items, order_date)
     print(f"  \u2713 {len(days)} distinct sale days")
 
-    write_trends_csv(days, output_path)
-    print(f"\n\u2713 Saved to {output_path}")
-
     # Compare against an existing hand-tallied (or previously generated)
     # trends CSV in the same folder as the sales export, so discrepancies
     # can be checked manually against the Etsy dashboard.
+    # only write fresh trends CSV if no existing one available
     reference_path = os.path.join(
         os.path.dirname(os.path.abspath(sales_path)), 'PyrrhicSilvaShopTrends.csv'
     )
     print(f"\nLooking for reference file at {reference_path} ...")
     if not os.path.isfile(reference_path):
         print("  (not found - skipping comparison)")
+
+        output_path = input("Enter output path (or Enter for TempTrendsGenerated.csv): ").strip()
+        if not output_path:
+            output_path = 'TempTrendsGenerated.csv'
+
+        write_trends_csv(days, output_path)
+        print(f"\n\u2713 Saved to {output_path}")
         return
 
     reference_days = load_reference_trends(reference_path)

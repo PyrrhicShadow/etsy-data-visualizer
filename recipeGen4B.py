@@ -5,6 +5,7 @@ Translates 4B pride flag recipes to 6P and 8R equivalents
 """
 
 import csv
+from shopIO import load_inventory, load_recipes
 
 # == COLOR MAPPING ==
 # 4B ID -> (6P pearl ID, 8R jelly ID, 4C cube ID)
@@ -45,48 +46,6 @@ PRESERVE_IDS = {
     '1001', '1002', '1003', '1004', '1005', '1006',
     '1500', '1501', '1502', '1503',
 }
-
-def load_inventory(filename):
-    """Load inventory data from CSV."""
-    inventory = {}
-    with open(filename, 'r', encoding='utf-8-sig') as f:  # utf-8-sig strips BOM
-        reader = csv.DictReader(f)
-        for row in reader:
-            mat_id = row['material id'].strip()
-            inventory[mat_id] = {
-                'name': row['material name'].strip(),
-                'price': float(row['price']),
-                'total_units': float(row['total units']),
-                'specific_units': float(row['specific units']),
-            }
-    return inventory
-
-def load_recipes(filename):
-    """Load recipes from CSV, handling variable-length rows."""
-    recipes = {}
-    with open(filename, 'r', encoding='utf-8-sig') as f:
-        for line in f:
-            # ... rest stays the same
-            parts = line.strip().split(',')
-            if len(parts) < 2:
-                continue
-            
-            sku = parts[0].strip()
-            materials = {}
-            
-            for cell in parts[1:]:
-                cell = cell.strip()
-                if cell and '*' in cell:
-                    mat_id, qty = cell.split('*')
-                    mat_id = mat_id.strip()
-                    qty = int(qty.strip())
-                    if mat_id.isdigit():
-                        materials[mat_id] = qty
-                # Non-numeric entries (like "cat charm") are silently skipped
-            
-            recipes[sku] = materials
-    
-    return recipes
 
 def translate_recipe(recipe, target_type, color_map, charm_map):
     """Translate a 4B recipe to 6P, 8R, or 4C."""
@@ -239,9 +198,9 @@ def main():
             print(f"    {mid}: 6mm [color] round plastic pearl beads")
     
     # Save output as CSV
-    output_path = input("\nEnter output path (or press Enter for RecipesComplete.csv): ").strip()
+    output_path = input("\nEnter output path (or press Enter for TempMissingRecipes.csv): ").strip()
     if not output_path:
-        output_path = 'RecipesComplete.csv'
+        output_path = 'TempMissingRecipes.csv'
     
     write_recipes_csv(all_recipes, output_path)
     

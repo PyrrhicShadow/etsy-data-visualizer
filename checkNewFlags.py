@@ -47,28 +47,9 @@ You'll be prompted for the RecipesData.csv path.
 
 import csv
 from skuVocab import DESIGNS, group_designs_by_trend_column, flag_identity
+from shopIO import load_recipes
 
 CONVERSION_PREFIXES = ('4B', '4C', '6P', '8R')  # matches recipeGen4B.py's translation targets
-
-def load_recipe_skus(filename):
-    """Load just the SKU column from RecipesData.csv.
-
-    Uses the same manual comma-split as recipeGen4B.py's load_recipes(),
-    rather than csv.DictReader, because these rows are variable-length
-    (materials columns are padded with trailing empty cells and csv's
-    dialect handling isn't needed here -- we only want column 0).
-    """
-    skus = []
-    with open(filename, 'r', encoding='utf-8-sig') as f:
-        for line in f:
-            parts = line.strip().split(',')
-            if len(parts) < 2:
-                continue
-            sku = parts[0].strip()
-            if sku.lower() == 'sku':  # header row
-                continue
-            skus.append(sku)
-    return skus
 
 
 def extract_flags_by_prefix(skus, prefixes=CONVERSION_PREFIXES):
@@ -192,7 +173,7 @@ def main():
         rec_path = 'RecipesData.csv'
 
     try:
-        skus = load_recipe_skus(rec_path)
+        skus = list(load_recipes(rec_path).keys())
     except FileNotFoundError:
         print(f"Error: File not found at '{rec_path}'")
         return
