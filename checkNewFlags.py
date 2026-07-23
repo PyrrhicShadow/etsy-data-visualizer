@@ -2,21 +2,26 @@
 """
 checkNewFlags.py - Pyrrhic Silva Shop
 
-Scans RecipesData.csv for 4b-[flag] entries and compares the flag codes
-against skuVocab.DESIGNS, in BOTH directions:
+Scans RecipesData.csv for 4B/4C/6P/8R-[flag] entries and compares the
+flag codes against skuVocab.DESIGNS, across THREE checks:
 
-  1. Recipe -> vocab: flag codes used in RecipesData.csv that aren't in
-     skuVocab.DESIGNS at all (NEW), or that are recognized only as a
-     non-canonical alias/misspelling (e.g. 'BI' instead of 'BI3').
-     Run this BEFORE recipeGen4B.py when starting the "add new recipes"
-     workflow, so you know up front whether skuVocab.py (and skuKey.txt)
-     need a new entry before you generate 4C/6P/8R equivalents.
+  1. Recipe -> vocab: flag codes used ANYWHERE in RecipesData.csv (any of
+     the four bead types) that aren't in skuVocab.DESIGNS at all (NEW),
+     or that are recognized only as a non-canonical alias/misspelling
+     (e.g. 'BI' instead of 'BI3'). Run this BEFORE recipeGen4B.py when
+     starting the "add new recipes" workflow, so you know up front
+     whether skuVocab.py (and skuKey.txt) need a new entry.
 
-  2. Vocab -> recipe: designs already in skuVocab.DESIGNS that have no
-     4b-[flag] recipe yet under any of their known code spellings. This
-     is the more common direction in practice, since skuVocab.py is
-     where new designs tend to get added first. Not an error -- just a
-     checklist of what still needs a recipe.
+  2. Vocab -> master recipe: designs already in skuVocab.DESIGNS that
+     have no master 4B recipe yet under any of their known code
+     spellings. This is the more common direction in practice, since
+     skuVocab.py is where new designs tend to get added first. Not an
+     error -- just a checklist of what still needs a 4B recipe.
+
+  3. Conversion completeness: designs that have a recipe under SOME but
+     not ALL of 4B/4C/6P/8R -- i.e. recipeGen4B.py has been run (or the
+     recipe was hand-added) for some bead types but not others. This is
+     the "where did I leave off converting" check.
 
 HOW "NEW" VS "NON-CANONICAL" IS DETERMINED:
 skuVocab.DESIGNS maps code -> (description, trend_column). For canonical
@@ -29,6 +34,11 @@ for "non-canonical, but not necessarily new." Flags that don't appear as
 a DESIGNS key at all -- under any spelling -- are reported as genuinely
 NEW.
 
+The same alias-awareness applies to the conversion-completeness check
+(#3): if a design was converted as 4b-bi but 6p-bi3 (inconsistent code
+across bead types), it's still recognized as ONE design with 4B and 6P
+done, not two unrelated half-finished conversions.
+
 USAGE:
     python3 checkNewFlags.py
 
@@ -37,6 +47,9 @@ You'll be prompted for the RecipesData.csv path.
 
 import csv
 from skuVocab import DESIGNS
+
+
+CONVERSION_PREFIXES = ('4B', '4C', '6P', '8R')  # matches recipeGen4B.py's translation targets
 
 
 def load_recipe_skus(filename):
@@ -60,25 +73,31 @@ def load_recipe_skus(filename):
     return skus
 
 
-def extract_4b_flags(skus):
-    """Return dict flag_code (uppercase) -> list of original SKUs that used it.
+def extract_flags_by_prefix(skus, prefixes=CONVERSION_PREFIXES):
+    """Return dict prefix -> {flag_code (uppercase): [original SKUs]} for
+    each of the given bead-type prefixes.
 
-    Mirrors recipeGen4B.py's own parsing: sku[3:] after stripping the
-    '4b-' prefix. This is safe ONLY because 4b- recipe rows in
-    RecipesData.csv are charm-only recipes with no finding/length suffix
-    baked in (findings like -lv, -nk18 are separate recipe rows, per
+    Mirrors recipeGen4B.py's own parsing for the 4B case (sku[len(prefix)+1:]
+    after stripping 'prefix-'). Safe for the same reason as before: these
+    recipe rows are charm-only, with no finding/length suffix baked in
+    (findings like -lv, -nk18 are separate recipe rows, per
     skuCostLookup.py's parse_suffix / base_sku split). If that ever
     changes, this slicing logic needs to change too.
     """
-    flags = {}
+    result = {p: {} for p in prefixes}
     for sku in skus:
-        if sku.lower().startswith('4b-'):
-            flag = sku[3:].strip().upper()
-            if not flag:
-                print(f"  \u26a0\ufe0f  Warning: '{sku}' has no flag after the 4b- prefix, skipping.")
-                continue
-            flags.setdefault(flag, []).append(sku)
-    return flags
+        sku_lower = sku.lower()
+        for p in prefixes:
+            token = p.lower() + '-'
+            if sku_lower.startswith(token):
+                flag = sku[len(token):].strip().upper()
+                if not flag:
+                    print(f"  \u26a0\ufe0f  Warning: '{sku}' has no flag after the "
+                          f"{p}- prefix, skipping.")
+                    continue
+                result[p].setdefault(flag, []).append(sku)
+                break  # a SKU can only match one prefix
+    return result
 
 
 def group_designs_by_trend_column(designs):
@@ -121,6 +140,61 @@ def find_unused_designs(found_flags, designs):
     return unused
 
 
+def flag_identity(flag, designs):
+    """Return the canonical grouping identity for a flag code: the
+    trend_column if it's a known DESIGNS code (so aliases like 'BI' and
+    'BI3' are recognized as the same design), or the raw flag itself if
+    it isn't in DESIGNS at all (a brand-new flag has no canonical form to
+    fall back on yet).
+    """
+    if flag in designs:
+        return designs[flag][1]
+    return flag
+
+
+def check_conversion_completeness(flags_by_prefix, designs, prefixes=CONVERSION_PREFIXES):
+    """For every design that has a recipe under AT LEAST ONE of the given
+    bead-type prefixes, but NOT ALL of them, report which prefixes are
+    done and which are still missing.
+
+    Grouping is by flag_identity() rather than literal code, so a design
+    converted inconsistently (e.g. 4b-bi but 6p-bi3) is still recognized
+    as one design with 4B/6P done and 4C/8R missing -- not misread as two
+    unrelated half-finished conversions.
+
+    Returns dict identity -> {'present': {prefix: flag_code_used},
+    'missing': set of prefixes}. Designs with recipes under every prefix,
+    or under none of them, are excluded -- the former needs no action,
+    and the latter is find_unused_designs()'s job to report.
+    """
+    by_identity = {}
+    for p in prefixes:
+        for flag in flags_by_prefix[p]:
+            identity = flag_identity(flag, designs)
+            by_identity.setdefault(identity, {})[p] = flag
+
+    incomplete = {}
+    for identity, present_map in by_identity.items():
+        missing = set(prefixes) - set(present_map.keys())
+        if missing:
+            incomplete[identity] = {'present': present_map, 'missing': missing}
+    return incomplete
+
+
+def format_completeness_line(identity, info, prefixes=CONVERSION_PREFIXES):
+    """'IDENTITY - have: 4B, 6P(as BI)   missing: 4C, 8R' -- noting the
+    actual code used wherever it differs from the display identity, since
+    that's a detail worth knowing (see flag_identity())."""
+    have_parts = []
+    for p in prefixes:
+        if p in info['present']:
+            used = info['present'][p]
+            have_parts.append(p if used == identity else f"{p}(as {used})")
+    have_str = ', '.join(have_parts)
+    missing_str = ', '.join(p for p in prefixes if p in info['missing'])
+    return f"  \u2022 {identity} - have: {have_str}   missing: {missing_str}"
+
+
 def classify_flags(found_flags, designs):
     """Split found flag codes into three buckets:
       - new: code isn't a DESIGNS key under any spelling
@@ -159,10 +233,18 @@ def main():
         print(f"Error: File not found at '{rec_path}'")
         return
 
-    found_flags = extract_4b_flags(skus)
-    print(f"\n  \u2713 {len(found_flags)} distinct 4b- flag code(s) found in {rec_path}")
+    flags_by_prefix = extract_flags_by_prefix(skus)
+    counts_str = ', '.join(f"{p}={len(flags_by_prefix[p])}" for p in CONVERSION_PREFIXES)
+    print(f"\n  \u2713 Distinct flag codes found by bead type: {counts_str}")
 
-    new, non_canonical, canonical = classify_flags(found_flags, DESIGNS)
+    # Union across all four bead types -- a flag introduced via 6p-newflag
+    # before any 4b-newflag exists should still be caught here.
+    combined_flags = {}
+    for p in CONVERSION_PREFIXES:
+        for flag, flag_skus in flags_by_prefix[p].items():
+            combined_flags.setdefault(flag, []).extend(flag_skus)
+
+    new, non_canonical, canonical = classify_flags(combined_flags, DESIGNS)
 
     print("\n" + "-" * 60)
     if new:
@@ -188,9 +270,9 @@ def main():
     print(f"\n\u2713 {len(canonical)} flag(s) already canonical, no action needed.")
 
     print("\n" + "-" * 60)
-    unused = find_unused_designs(found_flags, DESIGNS)
+    unused = find_unused_designs(flags_by_prefix['4B'], DESIGNS)
     if unused:
-        print(f"\n\U0001F4CB IN skuVocab.py BUT NO 4b- RECIPE YET ({len(unused)}):")
+        print(f"\n\U0001F4CB IN skuVocab.py BUT NO 4B RECIPE YET ({len(unused)}):")
         for trend_col in sorted(unused):
             group = unused[trend_col]
             label = group['canonical'] or trend_col
@@ -199,9 +281,21 @@ def main():
             print(f"  \u2022 {label} - {group['description']}{alias_note}")
         print("\n  This is normal if you just haven't gotten to these yet -- it's")
         print("  not an error. Useful as a checklist of designs still needing a")
-        print("  4b-[flag] recipe added to RecipesData.csv.")
+        print("  master 4B recipe added to RecipesData.csv.")
     else:
-        print("\n\u2705 Every design in skuVocab.py already has at least one 4b- recipe.")
+        print("\n\u2705 Every design in skuVocab.py already has at least one 4B recipe.")
+
+    print("\n" + "-" * 60)
+    incomplete = check_conversion_completeness(flags_by_prefix, DESIGNS)
+    if incomplete:
+        print(f"\n\U0001F504 CONVERSION IN PROGRESS - some bead types still missing ({len(incomplete)}):")
+        for identity in sorted(incomplete):
+            print(format_completeness_line(identity, incomplete[identity]))
+        print("\n  These have a recipe for at least one bead type but not all four.")
+        print("  Run recipeGen4B.py on these (it skips ones that already exist) and")
+        print("  paste the missing bead-type recipes back into RecipesData.csv.")
+    else:
+        print("\n\u2705 Every design with a recipe has all four bead types (4B/4C/6P/8R).")
 
     print()
 

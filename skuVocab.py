@@ -219,6 +219,51 @@ BRACELET_INFO = {
 
 
 # ---------------------------------------------------------------------
+# CANONICAL-FORM HELPERS -- several code_map dicts above (DESIGNS,
+# SEASON_NAMES, AETHER_ELEMENTS, CC_COLORS, KYO_COLORS, BEAD_PREFIXES,
+# STANDALONE_PREFIXES) share the same code -> (description, trend_column)
+# shape, and more than one code can point at the same trend_column (old
+# aliases like BI/BI3, misspellings like MULTG/MULTIG). These two
+# functions answer "what's the canonical identity behind this code (or
+# these codes)?" for any dict of that shape -- not just DESIGNS -- so
+# any script working with SKU codes can resolve aliases consistently
+# instead of re-deriving the same code.upper() == trend_column.upper()
+# check locally.
+# ---------------------------------------------------------------------
+def group_designs_by_trend_column(code_map):
+    """Group a code -> (description, trend_column) dict by trend_column
+    (the actual design/identity), since multiple codes can point at the
+    same one (e.g. BI/BI3 both -> BI3).
+
+    Returns dict trend_column -> {'codes': set of all codes for it,
+    'canonical': the code where code == trend_column (or None if somehow
+    absent), 'description': description text from the canonical code, or
+    from whichever code is available if no canonical one exists}.
+    """
+    groups = {}
+    for code, (desc, trend_col) in code_map.items():
+        group = groups.setdefault(trend_col, {'codes': set(), 'canonical': None, 'description': None})
+        group['codes'].add(code)
+        if code.upper() == trend_col.upper():
+            group['canonical'] = code
+            group['description'] = desc
+        elif group['description'] is None:
+            group['description'] = desc
+    return groups
+
+
+def flag_identity(code, code_map):
+    """Return the canonical grouping identity for a single code: the
+    trend_column if it's a known key in code_map (so aliases like 'BI'
+    and 'BI3' are recognized as the same design), or the raw code itself
+    if it isn't in code_map at all (nothing to canonicalize to yet).
+    """
+    if code in code_map:
+        return code_map[code][1]
+    return code
+
+
+# ---------------------------------------------------------------------
 # VALIDATION -- call this against the live TREND_COLUMNS list so a typo
 # or renamed column fails loudly at import time instead of silently
 # undercounting a design in the generated trends CSV.
