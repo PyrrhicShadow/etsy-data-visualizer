@@ -7,9 +7,10 @@ Take manually sourced data and add it to Etsy's reports to create a single app t
 * Count orders by day of the week: finds which days are most busy for new orders
 * Count orders by part of the month: shows whether buyers are more likely to buy at the beginning, middle, or end of any month
 * SKU parser: turns order SKUs into a human-readable sentence
-    * Good for team members who help with shipping and packing 
-* SKU cost lookup: breaks down materials costs of any order SKU 
-* Unified SKU library for syncronized changes to sales offerings
+    * Good for team members who help with shipping and packaging 
+* SKU cost lookup: breaks down materials costs of order SKU by charm, hardware, and packaging materials
+* Unified SKU library for syncronized changes to sales offerings 
+    * Flags when Recipe data or Trends are missing new SKU types
 * Existing Inventory and Recipe data for listings can be validated and automated 
 
 ## Current reports 
