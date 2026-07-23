@@ -46,11 +46,9 @@ You'll be prompted for the RecipesData.csv path.
 """
 
 import csv
-from skuVocab import DESIGNS
-
+from skuVocab import DESIGNS, group_designs_by_trend_column, flag_identity
 
 CONVERSION_PREFIXES = ('4B', '4C', '6P', '8R')  # matches recipeGen4B.py's translation targets
-
 
 def load_recipe_skus(filename):
     """Load just the SKU column from RecipesData.csv.
@@ -100,28 +98,6 @@ def extract_flags_by_prefix(skus, prefixes=CONVERSION_PREFIXES):
     return result
 
 
-def group_designs_by_trend_column(designs):
-    """Group DESIGNS entries by trend_column (the actual design identity),
-    since multiple codes can point at the same design (e.g. BI/BI3 both
-    -> BI3, TRANS/TRANS3/TRANS5 -> TRANS3/TRANS5 respectively).
-
-    Returns dict trend_column -> {'codes': set of all codes for it,
-    'canonical': the code where code == trend_column (or None if somehow
-    absent), 'description': description text from the canonical code, or
-    from whichever code is available if no canonical one exists}.
-    """
-    groups = {}
-    for code, (desc, trend_col) in designs.items():
-        group = groups.setdefault(trend_col, {'codes': set(), 'canonical': None, 'description': None})
-        group['codes'].add(code)
-        if code.upper() == trend_col.upper():
-            group['canonical'] = code
-            group['description'] = desc
-        elif group['description'] is None:
-            group['description'] = desc
-    return groups
-
-
 def find_unused_designs(found_flags, designs):
     """Return dict trend_column -> group info (codes/canonical/description)
     for every design in skuVocab.DESIGNS that has NO 4b- recipe yet under
@@ -138,18 +114,6 @@ def find_unused_designs(found_flags, designs):
         if not (group['codes'] & found_set):
             unused[trend_col] = group
     return unused
-
-
-def flag_identity(flag, designs):
-    """Return the canonical grouping identity for a flag code: the
-    trend_column if it's a known DESIGNS code (so aliases like 'BI' and
-    'BI3' are recognized as the same design), or the raw flag itself if
-    it isn't in DESIGNS at all (a brand-new flag has no canonical form to
-    fall back on yet).
-    """
-    if flag in designs:
-        return designs[flag][1]
-    return flag
 
 
 def check_conversion_completeness(flags_by_prefix, designs, prefixes=CONVERSION_PREFIXES):
