@@ -89,15 +89,80 @@ import skuVocab as vocab
 BEAD_PREFIXES = set(vocab.BEAD_PREFIXES)
 
 # code -> trend column, replaces GENERIC_FLAGS + the old FLAG_RENAME hack
-DESIGN_COLUMN = {code: col for code, (_desc, col) in vocab.DESIGNS.items()}
+DESIGN_COLUMN_CODES = {code: col for code, (_desc, col) in vocab.DESIGNS.items()}
 
-AETHER_ELEMENTS = set(vocab.AETHER_ELEMENTS)
-SEASON_NAMES = {code: col for code, (_desc, col) in vocab.SEASON_NAMES.items()}
-CC_COLORS = {code: col for code, (_desc, col) in vocab.CC_COLORS.items()}
-KYO_COLORS = {code: col for code, (_desc, col) in vocab.KYO_COLORS.items()}
+AETHER_ELEMENTS_CODES = set(vocab.AETHER_ELEMENTS)
+SEASON_NAMES_CODES = {code: col for code, (_desc, col) in vocab.SEASON_NAMES.items()}
+CC_COLORS_CODES = {code: col for code, (_desc, col) in vocab.CC_COLORS.items()}
+KYO_COLORS_CODES = {code: col for code, (_desc, col) in vocab.KYO_COLORS.items()}
+
+# ---------------------------------------------------------------------
+# VALIDATION -- call this against the live TREND_COLUMNS list so a typo
+# or renamed column fails loudly at import time instead of silently
+# undercounting a design in the generated trends CSV.
+# ---------------------------------------------------------------------
+def all_expected_trend_columns():
+    """Every trend column name this vocabulary module expects to exist,
+    pulled from every code -> (description, column) / dict entry above."""
+    cols = set()
+
+    for code_map in (vocab.BEAD_PREFIXES, vocab.STANDALONE_PREFIXES, vocab.DESIGNS,
+                      vocab.SEASON_NAMES, vocab.AETHER_ELEMENTS, vocab.CC_COLORS, vocab.KYO_COLORS):
+        for _desc, col in code_map.values():
+            if col is not None:
+                cols.add(col)
+
+    for entry in vocab.FINDINGS.values():
+        if entry['trend_column'] is not None:
+            cols.add(entry['trend_column'])
+
+    cols.add(vocab.TART_INFO['trend_column'])
+    cols.add(vocab.NK_INFO['trend_column'])
+    cols.add(vocab.NK_INFO['length_trend_column'])
+    cols.add(vocab.BRACELET_INFO['chain']['trend_column'])
+    cols.add(vocab.BRACELET_INFO['elastic']['trend_column'])
+    cols.add(vocab.BRACELET_INFO['length_trend_column'])
+
+    return cols
+
+
+def validate_against_trend_columns(trend_columns, raise_on_error=False):
+    """
+    Compare this vocabulary against a live TREND_COLUMNS list.
+
+    Returns (missing, unreferenced):
+      - missing: columns this vocabulary expects but that AREN'T in
+        trend_columns (typo, renamed column, or column that got deleted --
+        this is the dangerous direction, since it means a design will
+        silently stop being counted anywhere but 'items sold').
+      - unreferenced: columns that exist in trend_columns but that no
+        vocabulary code points to (informational only -- some of these
+        are structural, e.g. 'date', 'items sold', 'SEASONS-charm', so
+        this list will never be empty and that's fine).
+
+    If raise_on_error is True, raises ValueError when `missing` is
+    non-empty. salesToTrendsGen.py should call this at startup with
+    raise_on_error=True so a bad mapping stops the run instead of quietly
+    producing a wrong trends file.
+    """
+    expected = all_expected_trend_columns()
+    trend_set = set(trend_columns)
+
+    missing = sorted(expected - trend_set)
+    unreferenced = sorted(trend_set - expected)
+
+    if missing and raise_on_error:
+        raise ValueError(
+            "sku_vocabulary.py expects these trend columns, but they're "
+            f"missing from TREND_COLUMNS: {missing}. Either the column was "
+            "renamed/removed, or a vocabulary entry has a typo'd "
+            "trend_column value."
+        )
+
+    return missing, unreferenced
 
 # --- run the cross-check immediately after TREND_COLUMNS is defined ---
-_missing, _unreferenced = vocab.validate_against_trend_columns(
+_missing, _unreferenced = validate_against_trend_columns(
     TREND_COLUMNS, raise_on_error=True
 )
 if _unreferenced:
@@ -202,18 +267,18 @@ def build_day_rows(order_items, order_date):
             elif prefix == 'SEASONS':
                 row['SEASONS'] += qty
                 if parsed['flag']:
-                    row[SEASON_NAMES[parsed['flag']]] += qty
+                    row[SEASON_NAMES_CODES[parsed['flag']]] += qty
             elif prefix == 'CC':
                 row['CC (Candy-Cane)'] += qty
                 if parsed['flag']:
-                    row[CC_COLORS[parsed['flag']]] += qty
+                    row[CC_COLORS_CODES[parsed['flag']]] += qty
             elif prefix == 'KYO':
                 if parsed['flag']:
-                    row[KYO_COLORS[parsed['flag']]] += qty
+                    row[KYO_COLORS_CODES[parsed['flag']]] += qty
 
             # design flag (pride flags etc.) for bead-prefixed items
             if parsed['flag'] and prefix in BEAD_PREFIXES:
-                col = DESIGN_COLUMN.get(parsed['flag'])
+                col = DESIGN_COLUMN_CODES.get(parsed['flag'])
                 if col:
                     row[col] += qty
                 else:
