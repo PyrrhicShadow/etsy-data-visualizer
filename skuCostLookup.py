@@ -8,15 +8,13 @@ re-parsed string, so there's a single source of truth for what a SKU's
 ending means -- no separate dictionaries that have to agree on casing.
 """
 
-from skuVocab import FINDINGS, TART_INFO
+from skuVocab import FINDINGS, FINDINGS_LEN, TART_INFO
 from skuParser import parse_sku
 from shopIO import load_inventory, load_recipes
 import difflib
 
 PACKAGING_RULES = {
     **{code: info['packaging'] for code, info in FINDINGS.items()},
-    'NK': ('chain-card', 1),
-    'NK0': ('bag', 1),
     'TART': TART_INFO['packaging'],
     None: ('bag', 1),
 }
@@ -24,7 +22,7 @@ PACKAGING_RULES = {
 SUFFIX_MULTIPLIERS = {
     **{code: {'charm': info['charm_mult'], 'finding': info['finding_mult']}
        for code, info in FINDINGS.items()},
-    'NK': {'charm': 1, 'finding': 1},
+    'NK': {'charm': FINDINGS_LEN['NK']['charm_mult'], 'finding': FINDINGS_LEN['NK']['finding_mult']},
     'TART': {'charm': 2, 'finding': 0},
     None: {'charm': 1, 'finding': 0},
 }
@@ -237,7 +235,7 @@ def calculate_cost(sku, inventory, recipes):
                     'quantity': f"{length} in", 'cost': round(chain_cost, 4),
                     'note': f'{length}-inch chain',
                 })
-        packaging_rule = PACKAGING_RULES['NK'] if length else PACKAGING_RULES['NK0']
+        packaging_rule = FINDINGS_LEN['NK']['packaging']['nonzero'] if length else FINDINGS_LEN['NK']['packaging']['zero']
     else:
         finding_recipe_key = category.lower()
         if finding_recipe_key in recipes:

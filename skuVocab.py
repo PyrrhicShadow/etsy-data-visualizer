@@ -191,6 +191,50 @@ FINDINGS = {
 }
 
 # ---------------------------------------------------------------------
+# FINDINGS_LEN -- finding types that pair a fixed material profile with
+# a customer-chosen LENGTH (unlike FINDINGS above, which have no such
+# variable). Any future finding type with a numeric suffix belongs HERE,
+# not as a new bespoke *_INFO dict.
+#
+# NOTE ON PARSING: this dict does NOT make NK/BRAC/BRAC-e detection
+# data-driven the way FINDINGS does for skuParser.py's _finding_patterns()
+# loop. Each still needs its own regex with a numeric capture group
+# (_NK_PATTERN, _BRAC_PATTERN, _BRAC_E_PATTERN in skuParser.py), because
+# the "code" here is a category name plus a variable, not a fixed literal
+# token the way 'LV' is. This dict centralizes the DATA only.
+# ---------------------------------------------------------------------
+FINDINGS_LEN = {
+    'NK': {
+        'trend_column': 'NK (necklace)',
+        'length_trend_column': 'Chain (inches)',
+        'packaging': {
+            'zero': ('bag', 1),
+            'nonzero': ('chain-card', 1),
+        },
+        'charm_mult': 1,
+        'finding_mult': 1,
+    },
+    'BRAC': {
+        'trend_column': 'BRAC (chain bracelets & chokers)',
+        # Shared with BRAC-E below -- sales format uses ONE physical
+        # column for both bracelet types' lengths. Nothing enforces these
+        # two strings staying identical if you edit one later.
+        'length_trend_column': 'BRAC (inches)',
+        'packaging': None,   # TODO: not yet standardized
+        'charm_mult': None,
+        'finding_mult': None,
+    },
+    'BRAC-E': {
+        'trend_column': 'BRAC-e (elastic bracelets)',
+        'length_trend_column': 'BRAC (inches)',  # see BRAC note above
+        'packaging': None,   # TODO: idea in progress, not finalized
+        'charm_mult': None,
+        'finding_mult': None,
+    },
+}
+
+
+# ---------------------------------------------------------------------
 # Non-finding structural item types, kept here mainly so their
 # descriptions/trend columns aren't ALSO re-typed in three places.
 # The parsing logic for these (regexes, single-vs-pair branching, length
@@ -201,18 +245,6 @@ TART_INFO = {
     'description_pair': 'Tartaglia cosplay earrings (pair)',
     'trend_column': 'TART',
     'packaging': ('ear-card', 1),
-}
-
-NK_INFO = {
-    'description': 'necklace',
-    'trend_column': 'NK (necklace)',
-    'length_trend_column': 'Chain (inches)',
-}
-
-BRACELET_INFO = {
-    'chain':   {'trend_column': 'BRAC (chain bracelets & chokers)'},
-    'elastic': {'trend_column': 'BRAC-e (elastic bracelets)'},
-    'length_trend_column': 'BRAC (inches)',
 }
 
 

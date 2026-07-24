@@ -119,11 +119,11 @@ def all_expected_trend_columns():
             cols.add(entry['trend_column'])
 
     cols.add(vocab.TART_INFO['trend_column'])
-    cols.add(vocab.NK_INFO['trend_column'])
-    cols.add(vocab.NK_INFO['length_trend_column'])
-    cols.add(vocab.BRACELET_INFO['chain']['trend_column'])
-    cols.add(vocab.BRACELET_INFO['elastic']['trend_column'])
-    cols.add(vocab.BRACELET_INFO['length_trend_column'])
+    for _code, info in vocab.FINDINGS_LEN.items():
+        if info.get('trend_column'):
+            cols.add(info['trend_column'])
+        if info.get('length_trend_column'):
+            cols.add(info['length_trend_column'])
 
     return cols
 
