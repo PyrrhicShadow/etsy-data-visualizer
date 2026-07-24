@@ -83,18 +83,22 @@ TREND_COLUMNS = [
 # ---------------------------------------------------------------------
 # STEP 2: SKU vocabulary (from skuParser.py / skuKey.txt), with the
 # renames needed to land on the trends sheet's exact header spelling.
+#
+# Every one of these is built as code -> trend_column, uniformly, even
+# where code and column currently happen to match (e.g. '4B' -> '4B').
+# Never assume they'll stay identical -- skuVocab.py's own data model
+# (code -> (desc, col)) explicitly allows them to diverge, the same way
+# 'BI' -> 'BI3' already diverges in DESIGNS.
 # ---------------------------------------------------------------------
 import skuVocab as vocab
 
-BEAD_PREFIXES = set(vocab.BEAD_PREFIXES)
-
-# code -> trend column, replaces GENERIC_FLAGS + the old FLAG_RENAME hack
-DESIGN_COLUMN_CODES = {code: col for code, (_desc, col) in vocab.DESIGNS.items()}
-
-AETHER_ELEMENTS_CODES = set(vocab.AETHER_ELEMENTS)
-SEASON_NAMES_CODES = {code: col for code, (_desc, col) in vocab.SEASON_NAMES.items()}
-CC_COLORS_CODES = {code: col for code, (_desc, col) in vocab.CC_COLORS.items()}
-KYO_COLORS_CODES = {code: col for code, (_desc, col) in vocab.KYO_COLORS.items()}
+BEAD_PREFIX_COLUMN = {code: col for code, (_desc, col) in vocab.BEAD_PREFIXES.items()}
+DESIGN_COLUMN = {code: col for code, (_desc, col) in vocab.DESIGNS.items()}
+STANDALONE_COLUMN = {code: col for code, (_desc, col) in vocab.STANDALONE_PREFIXES.items()}
+AETHER_COLUMN = {code: col for code, (_desc, col) in vocab.AETHER_ELEMENTS.items()}
+SEASON_COLUMN = {code: col for code, (_desc, col) in vocab.SEASON_NAMES.items()}
+CC_COLUMN = {code: col for code, (_desc, col) in vocab.CC_COLORS.items()}
+KYO_COLUMN = {code: col for code, (_desc, col) in vocab.KYO_COLORS.items()}
 
 # ---------------------------------------------------------------------
 # VALIDATION -- call this against the live TREND_COLUMNS list so a typo
@@ -102,13 +106,11 @@ KYO_COLORS_CODES = {code: col for code, (_desc, col) in vocab.KYO_COLORS.items()
 # undercounting a design in the generated trends CSV.
 # ---------------------------------------------------------------------
 def all_expected_trend_columns():
-    """Every trend column name this vocabulary module expects to exist,
-    pulled from every code -> (description, column) / dict entry above."""
     cols = set()
 
-    for code_map in (vocab.BEAD_PREFIXES, vocab.STANDALONE_PREFIXES, vocab.DESIGNS,
-                      vocab.SEASON_NAMES, vocab.AETHER_ELEMENTS, vocab.CC_COLORS, vocab.KYO_COLORS):
-        for _desc, col in code_map.values():
+    for code_map in (BEAD_PREFIX_COLUMN, STANDALONE_COLUMN, DESIGN_COLUMN,
+                      SEASON_COLUMN, AETHER_COLUMN, CC_COLUMN, KYO_COLUMN):
+        for col in code_map.values():
             if col is not None:
                 cols.add(col)
 
@@ -256,29 +258,29 @@ def build_day_rows(order_items, order_date):
 
             prefix = parsed['prefix']
 
-            if prefix in BEAD_PREFIXES:
-                row[prefix] += qty
+            if prefix in BEAD_PREFIX_COLUMN:
+                row[BEAD_PREFIX_COLUMN[prefix]] += qty
             elif prefix == 'HOWLS':
                 row['HOWLS'] += qty
             elif prefix == 'AETHER':
                 row['AETHER'] += qty
                 if parsed['flag']:
-                    row[parsed['flag']] += qty  # ANEMO/GEO/... match column name directly
+                    row[AETHER_COLUMN[parsed['flag']]] += qty
             elif prefix == 'SEASONS':
                 row['SEASONS'] += qty
                 if parsed['flag']:
-                    row[SEASON_NAMES_CODES[parsed['flag']]] += qty
+                    row[SEASON_COLUMN[parsed['flag']]] += qty
             elif prefix == 'CC':
                 row['CC (Candy-Cane)'] += qty
                 if parsed['flag']:
-                    row[CC_COLORS_CODES[parsed['flag']]] += qty
+                    row[CC_COLUMN[parsed['flag']]] += qty
             elif prefix == 'KYO':
                 if parsed['flag']:
-                    row[KYO_COLORS_CODES[parsed['flag']]] += qty
+                    row[KYO_COLUMN[parsed['flag']]] += qty
 
             # design flag (pride flags etc.) for bead-prefixed items
-            if parsed['flag'] and prefix in BEAD_PREFIXES:
-                col = DESIGN_COLUMN_CODES.get(parsed['flag'])
+            if parsed['flag'] and prefix in BEAD_PREFIX_COLUMN:
+                col = DESIGN_COLUMN.get(parsed['flag'])
                 if col:
                     row[col] += qty
                 else:
