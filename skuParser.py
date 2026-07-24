@@ -19,7 +19,7 @@ import re
 from skuVocab import (
     BEAD_PREFIXES, STANDALONE_PREFIXES, DESIGNS,
     SEASON_NAMES, AETHER_ELEMENTS, CC_COLORS, KYO_COLORS,
-    FINDINGS, TART_INFO,
+    FINDINGS, FINDINGS_LEN, TART_INFO,
 )
 
 # ---------------------------------------------------------------------
@@ -109,7 +109,7 @@ def parse_sku(sku_input):
       category      -- 'LV'/'WR'/'BP'/'DK'/'CH'/'NK'/'BRAC'/'BRAC-E'/'TART'/None
       length        -- numeric length for NK/BRAC/BRAC-E (or None)
       tart_n        -- 1 or 2 for TART items (or None)
-      is_standalone -- True for items like '10-13-star' with no prefix scheme
+      is_standalone -- True for items with no prefix scheme
       unmatched_design_token -- a design-looking token that wasn't found in
                                  skuVocab (worth adding there), or None
     """
@@ -128,15 +128,6 @@ def parse_sku(sku_input):
             'base_sku': 'tart', 'prefix': None, 'design': None,
             'category': 'TART', 'length': None, 'tart_n': int(m.group(1)),
             'is_standalone': False, 'unmatched_design_token': None,
-        }
-
-    # -- 10-13-star: standalone, no naming scheme of its own yet --
-    if sku_upper == '10-13-STAR':
-        return {
-            'sku': sku_original, 'error': None,
-            'base_sku': '10-13-star', 'prefix': None, 'design': None,
-            'category': None, 'length': None, 'tart_n': None,
-            'is_standalone': True, 'unmatched_design_token': None,
         }
 
     # -- bead-style or standalone prefix --
@@ -245,12 +236,10 @@ def readable_description(sku_or_parsed):
             desc_parts[-1] += 's'
     elif category == 'NK':
         length = parsed['length']
-        desc_parts.append('necklace charm with bail only' if length == 0
-                           else f'necklace with {length}-inch chain')
-    elif category == 'BRAC-E':
-        desc_parts.append(f"elastic bracelet ({parsed['length']}-inch long)")
-    elif category == 'BRAC':
-        desc_parts.append(f"chain bracelet or choker ({parsed['length']}-inch long)")
+        desc = FINDINGS_LEN['NK']['description']['nonzero' if length else 'zero']
+        desc_parts.append(desc.format(length=length))
+    elif category in ('BRAC', 'BRAC-E'):
+        desc_parts.append(FINDINGS_LEN[category]['description'].format(length=parsed['length']))
 
     if parsed.get('unmatched_design_token'):
         desc_parts.append(f"[unrecognized design token: {parsed['unmatched_design_token']}]")

@@ -207,6 +207,10 @@ FINDINGS_LEN = {
     'NK': {
         'trend_column': 'NK (necklace)',
         'length_trend_column': 'Chain (inches)',
+        'description': {
+            'zero': 'necklace charm with bail only',
+            'nonzero': 'necklace with {length}-inch chain',
+        },
         'packaging': {
             'zero': ('bag', 1),
             'nonzero': ('chain-card', 1),
@@ -216,23 +220,32 @@ FINDINGS_LEN = {
     },
     'BRAC': {
         'trend_column': 'BRAC (chain bracelets & chokers)',
-        # Shared with BRAC-E below -- sales format uses ONE physical
-        # column for both bracelet types' lengths. Nothing enforces these
-        # two strings staying identical if you edit one later.
         'length_trend_column': 'BRAC (inches)',
+        'description': 'chain bracelet or choker ({length}-inch long)',
         'packaging': None,   # TODO: not yet standardized
         'charm_mult': None,
         'finding_mult': None,
     },
     'BRAC-E': {
         'trend_column': 'BRAC-e (elastic bracelets)',
-        'length_trend_column': 'BRAC (inches)',  # see BRAC note above
+        'length_trend_column': 'BRAC (inches)',
+        'description': 'elastic bracelet ({length}-inch long)',
         'packaging': None,   # TODO: idea in progress, not finalized
         'charm_mult': None,
         'finding_mult': None,
     },
 }
 
+# ---------------------------------------------------------------------
+# DEFAULT PACKAGING -- fallback packaging for any SKU with no suffix and
+# no category-specific rule (e.g. standalone recipe keys). This is a 
+# specific, deliberate choice (a generic bag), not a universal default 
+# other rules should be assumed to derive from.
+# NK's zero-length packaging and CH's packaging both also happen to use
+# 'bag' right now, but that's coincidence, not inheritance -- each was
+# decided independently and can diverge from this one at any time.
+# ---------------------------------------------------------------------
+DEFAULT_PACKAGING = ('bag', 1)
 
 # ---------------------------------------------------------------------
 # Non-finding structural item types, kept here mainly so their

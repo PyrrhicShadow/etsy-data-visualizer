@@ -8,7 +8,7 @@ re-parsed string, so there's a single source of truth for what a SKU's
 ending means -- no separate dictionaries that have to agree on casing.
 """
 
-from skuVocab import FINDINGS, FINDINGS_LEN, TART_INFO
+from skuVocab import FINDINGS, FINDINGS_LEN, DEFAULT_PACKAGING, TART_INFO
 from skuParser import parse_sku
 from shopIO import load_inventory, load_recipes
 import difflib
@@ -16,7 +16,7 @@ import difflib
 PACKAGING_RULES = {
     **{code: info['packaging'] for code, info in FINDINGS.items()},
     'TART': TART_INFO['packaging'],
-    None: ('bag', 1),
+    None: DEFAULT_PACKAGING,
 }
 
 SUFFIX_MULTIPLIERS = {
