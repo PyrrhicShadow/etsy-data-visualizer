@@ -43,6 +43,13 @@ USAGE:
     python3 checkNewFlags.py
 
 You'll be prompted for the RecipesData.csv path.
+
+GUI NOTE: run_checks() is the single compute entry point -- it runs all
+three checks and returns one report dict, with warnings collected as
+data instead of printed (extract_flags_by_prefix() used to print() a
+warning directly for a malformed SKU; it now appends to a returned list
+like everything else in this pass). render_report() is the only
+function that prints; a GUI calls run_checks() and builds its own view.
 """
 
 import csv
@@ -53,8 +60,13 @@ CONVERSION_PREFIXES = ('4B', '4C', '6P', '8R')  # matches recipeGen4B.py's trans
 
 
 def extract_flags_by_prefix(skus, prefixes=CONVERSION_PREFIXES):
-    """Return dict prefix -> {flag_code (uppercase): [original SKUs]} for
-    each of the given bead-type prefixes.
+    """Return (flags_by_prefix, warnings).
+
+    flags_by_prefix: dict prefix -> {flag_code (uppercase): [original SKUs]}
+    for each of the given bead-type prefixes.
+    warnings: list of plain strings for any SKU that matched a prefix but
+    had no flag after it (used to be printed immediately; now returned
+    so a caller decides how to surface it).
 
     Mirrors recipeGen4B.py's own parsing for the 4B case (sku[len(prefix)+1:]
     after stripping 'prefix-'). Safe for the same reason as before: these
@@ -64,6 +76,7 @@ def extract_flags_by_prefix(skus, prefixes=CONVERSION_PREFIXES):
     changes, this slicing logic needs to change too.
     """
     result = {p: {} for p in prefixes}
+    warnings = []
     for sku in skus:
         sku_lower = sku.lower()
         for p in prefixes:
@@ -71,12 +84,11 @@ def extract_flags_by_prefix(skus, prefixes=CONVERSION_PREFIXES):
             if sku_lower.startswith(token):
                 flag = sku[len(token):].strip().upper()
                 if not flag:
-                    print(f"  \u26a0\ufe0f  Warning: '{sku}' has no flag after the "
-                          f"{p}- prefix, skipping.")
+                    warnings.append(f"'{sku}' has no flag after the {p}- prefix, skipping.")
                     continue
                 result[p].setdefault(flag, []).append(sku)
                 break  # a SKU can only match one prefix
-    return result
+    return result, warnings
 
 
 def find_unused_designs(found_flags, designs):
@@ -163,33 +175,52 @@ def classify_flags(found_flags, designs):
     return new, non_canonical, canonical
 
 
-def main():
-    print("=" * 60)
-    print("CHECK NEW FLAGS - Pyrrhic Silva Shop")
-    print("=" * 60)
+def run_checks(skus, designs=DESIGNS):
+    """Single compute entry point: runs all three checks against a list
+    of SKUs and returns one report dict, e.g.:
 
-    rec_path = input("\nEnter path to RecipesData CSV (or Enter for RecipesData.csv): ").strip()
-    if not rec_path:
-        rec_path = 'RecipesData.csv'
+        {
+          'counts_by_prefix': {'4B': 12, '4C': 12, '6P': 12, '8R': 12},
+          'warnings': [...],
+          'new': {...}, 'non_canonical': {...}, 'canonical': {...},
+          'unused_designs': {...},
+          'incomplete_conversions': {...},
+        }
 
-    try:
-        skus = list(load_recipes(rec_path).keys())
-    except FileNotFoundError:
-        print(f"Error: File not found at '{rec_path}'")
-        return
+    No printing, no input -- this is what a GUI should call.
+    """
+    flags_by_prefix, warnings = extract_flags_by_prefix(skus)
 
-    flags_by_prefix = extract_flags_by_prefix(skus)
-    counts_str = ', '.join(f"{p}={len(flags_by_prefix[p])}" for p in CONVERSION_PREFIXES)
-    print(f"\n  \u2713 Distinct flag codes found by bead type: {counts_str}")
-
-    # Union across all four bead types -- a flag introduced via 6p-newflag
-    # before any 4b-newflag exists should still be caught here.
     combined_flags = {}
     for p in CONVERSION_PREFIXES:
         for flag, flag_skus in flags_by_prefix[p].items():
             combined_flags.setdefault(flag, []).extend(flag_skus)
 
-    new, non_canonical, canonical = classify_flags(combined_flags, DESIGNS)
+    new, non_canonical, canonical = classify_flags(combined_flags, designs)
+
+    return {
+        'counts_by_prefix': {p: len(flags_by_prefix[p]) for p in CONVERSION_PREFIXES},
+        'warnings': warnings,
+        'new': new,
+        'non_canonical': non_canonical,
+        'canonical': canonical,
+        'unused_designs': find_unused_designs(flags_by_prefix['4B'], designs),
+        'incomplete_conversions': check_conversion_completeness(flags_by_prefix, designs),
+    }
+
+
+def render_report_cli(report, designs=DESIGNS):
+    """CLI-only text renderer for run_checks()'s output. The only
+    function in this module that prints anything."""
+    counts_str = ', '.join(f"{p}={n}" for p, n in report['counts_by_prefix'].items())
+    print(f"\n  \u2713 Distinct flag codes found by bead type: {counts_str}")
+
+    if report['warnings']:
+        print(f"\n\u26a0\ufe0f  {len(report['warnings'])} warning(s) while scanning SKUs:")
+        for w in report['warnings']:
+            print(f"  - {w}")
+
+    new, non_canonical, canonical = report['new'], report['non_canonical'], report['canonical']
 
     print("\n" + "-" * 60)
     if new:
@@ -206,7 +237,7 @@ def main():
     if non_canonical:
         print(f"\n\u26a0\ufe0f  NON-CANONICAL - recognized, but not the canonical spelling ({len(non_canonical)}):")
         for flag in sorted(non_canonical):
-            _desc, trend_col = DESIGNS[flag]
+            _desc, trend_col = designs[flag]
             skus_str = ', '.join(non_canonical[flag])
             print(f"  \u2022 {flag} -> canonical is {trend_col}   (from: {skus_str})")
         print("\n  These will still work (skuVocab.py maps them), but consider")
@@ -215,7 +246,7 @@ def main():
     print(f"\n\u2713 {len(canonical)} flag(s) already canonical, no action needed.")
 
     print("\n" + "-" * 60)
-    unused = find_unused_designs(flags_by_prefix['4B'], DESIGNS)
+    unused = report['unused_designs']
     if unused:
         print(f"\n\U0001F4CB IN skuVocab.py BUT NO 4B RECIPE YET ({len(unused)}):")
         for trend_col in sorted(unused):
@@ -231,7 +262,7 @@ def main():
         print("\n\u2705 Every design in skuVocab.py already has at least one 4B recipe.")
 
     print("\n" + "-" * 60)
-    incomplete = check_conversion_completeness(flags_by_prefix, DESIGNS)
+    incomplete = report['incomplete_conversions']
     if incomplete:
         print(f"\n\U0001F504 CONVERSION IN PROGRESS - some bead types still missing ({len(incomplete)}):")
         for identity in sorted(incomplete):
@@ -243,6 +274,25 @@ def main():
         print("\n\u2705 Every design with a recipe has all four bead types (4B/4C/6P/8R).")
 
     print()
+
+
+def main():
+    print("=" * 60)
+    print("CHECK NEW FLAGS - Pyrrhic Silva Shop")
+    print("=" * 60)
+
+    rec_path = input("\nEnter path to RecipesData CSV (or Enter for RecipesData.csv): ").strip()
+    if not rec_path:
+        rec_path = 'RecipesData.csv'
+
+    try:
+        skus = list(load_recipes(rec_path).keys())
+    except FileNotFoundError:
+        print(f"Error: File not found at '{rec_path}'")
+        return
+
+    report = run_checks(skus)
+    render_report_cli(report)
 
 
 if __name__ == "__main__":

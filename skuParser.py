@@ -263,9 +263,9 @@ def main():
 
         parsed = parse_sku(user_input)
         if parsed.get('error'):
-            print(f"\n❌ {parsed['error']}\n")
+            print(f"\n\u274c {parsed['error']}\n")
         else:
-            print(f"\n✅ SKU: {parsed['sku']}")
+            print(f"\n\u2705 SKU: {parsed['sku']}")
             print(f"   {readable_description(parsed)}\n")
 
 

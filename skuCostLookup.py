@@ -6,6 +6,14 @@ Uses specific_units for all calculations.
 Suffix parsing returns a normalized (category, length) pair instead of a
 re-parsed string, so there's a single source of truth for what a SKU's
 ending means -- no separate dictionaries that have to agree on casing.
+
+GUI NOTE: calculate_cost() already returned a plain result dict (that
+part of the original design was right). What it didn't do was collect
+its own warnings -- material-lookup helpers used to print() directly,
+which a GUI has no way to intercept. Those helpers now return warnings
+as a list, calculate_cost() collects them into result['warnings'], and
+format_output() (CLI-only) is the one place that turns everything,
+warnings included, into printable text.
 """
 
 from skuVocab import FINDINGS, FINDINGS_LEN, DEFAULT_PACKAGING, TART_INFO
@@ -22,27 +30,28 @@ PACKAGING_RULES = {
 SUFFIX_MULTIPLIERS = {
     **{code: {'charm': info['charm_mult'], 'finding': info['finding_mult']}
        for code, info in FINDINGS.items()},
-    'NK': {'charm': FINDINGS_LEN['NK']['charm_mult'], 'finding': FINDINGS_LEN['NK']['finding_mult']},
+    'NK': {'charm': 1, 'finding': 1},
     'TART': {'charm': 2, 'finding': 0},
     None: {'charm': 1, 'finding': 0},
 }
 
 NOT_IMPLEMENTED_CATEGORIES = {'BRAC', 'BRAC-E'}
 
+
 def calculate_material_cost(material_id, quantity, inventory):
+    """Returns (cost, mat, warning). warning is None on success, or a
+    plain string describing the problem -- never printed here."""
     if material_id not in inventory:
-        print(f"  \u26a0\ufe0f Warning: Material {material_id} not found in inventory")
-        return 0.0, None
+        return 0.0, None, f"Material {material_id} not found in inventory"
 
     mat = inventory[material_id]
     divisor = mat['specific_units']
 
     if divisor <= 0:
-        print(f"  \u26a0\ufe0f Warning: Zero units for material {material_id}")
-        return 0.0, mat
+        return 0.0, mat, f"Zero units for material {material_id}"
 
     cost_per_unit = mat['price'] / divisor
-    return cost_per_unit * quantity, mat
+    return cost_per_unit * quantity, mat, None
 
 
 def calculate_chain_cost(length_inches, inventory):
@@ -80,22 +89,26 @@ def calculate_packaging_cost(pkg_key, pkg_qty, inventory, recipes):
     """Packaging labels ('ear-card', 'chain-card', 'bag') are recipe keys,
     not material IDs -- e.g. 'ear-card' resolves to 1x material 0901 via
     RecipesData.csv. Resolve through the recipe, then price the actual
-    material(s), same as charms and findings."""
+    material(s), same as charms and findings.
+
+    Returns (total_cost, items, warnings)."""
     if pkg_key not in recipes:
-        print(f"  \u26a0\ufe0f Warning: Packaging recipe '{pkg_key}' not found")
-        return 0.0, []
+        return 0.0, [], [f"Packaging recipe '{pkg_key}' not found"]
 
     total = 0.0
     items = []
+    warnings = []
     for mat_id, base_qty in recipes[pkg_key].items():
-        cost, mat = calculate_material_cost(mat_id, base_qty * pkg_qty, inventory)
+        cost, mat, warning = calculate_material_cost(mat_id, base_qty * pkg_qty, inventory)
         total += cost
+        if warning:
+            warnings.append(warning)
         items.append({
             'category': 'packaging', 'material_id': mat_id,
             'material_label': material_label(mat_id, mat),
             'quantity': base_qty * pkg_qty, 'cost': round(cost, 4),
         })
-    return total, items
+    return total, items, warnings
 
 
 def calculate_cost(sku, inventory, recipes):
@@ -104,7 +117,7 @@ def calculate_cost(sku, inventory, recipes):
     result = {
         'sku': sku_original, 'category': None, 'length': None,
         'charm_cost': 0.0, 'finding_cost': 0.0, 'combined_finding_cost': 0.0,
-        'packaging_cost': 0.0, 'total_cost': 0.0, 'breakdown': [],
+        'packaging_cost': 0.0, 'total_cost': 0.0, 'breakdown': [], 'warnings': [],
     }
 
     parsed = parse_sku(sku_original)
@@ -128,17 +141,20 @@ def calculate_cost(sku, inventory, recipes):
         total = 0.0
         for mat_id, qty in materials.items():
             qty_mult = qty * charm_mult if tart_n == 2 else qty
-            cost, mat = calculate_material_cost(mat_id, qty_mult, inventory)
+            cost, mat, warning = calculate_material_cost(mat_id, qty_mult, inventory)
             total += cost
+            if warning:
+                result['warnings'].append(warning)
             result['breakdown'].append({
                 'category': 'charm', 'material_id': mat_id,
                 'material_label': material_label(mat_id, mat),
                 'quantity': qty_mult, 'cost': round(cost, 4),
             })
         pkg_key, pkg_qty = PACKAGING_RULES['TART']
-        pkg_cost, pkg_items = calculate_packaging_cost(pkg_key, pkg_qty, inventory, recipes)
+        pkg_cost, pkg_items, pkg_warnings = calculate_packaging_cost(pkg_key, pkg_qty, inventory, recipes)
         total += pkg_cost
         result['breakdown'].extend(pkg_items)
+        result['warnings'].extend(pkg_warnings)
         result['charm_cost'] = round(total - pkg_cost, 4)
         result['packaging_cost'] = round(pkg_cost, 4)
         result['total_cost'] = round(total, 4)
@@ -151,17 +167,20 @@ def calculate_cost(sku, inventory, recipes):
                 return result
             total = 0.0
             for mat_id, qty in recipes[base_sku].items():
-                cost, mat = calculate_material_cost(mat_id, qty, inventory)
+                cost, mat, warning = calculate_material_cost(mat_id, qty, inventory)
                 total += cost
+                if warning:
+                    result['warnings'].append(warning)
                 result['breakdown'].append({
                     'category': 'charm', 'material_id': mat_id,
                     'material_label': material_label(mat_id, mat),
                     'quantity': qty, 'cost': round(cost, 4),
                 })
             pkg_key, pkg_qty = PACKAGING_RULES[None]
-            pkg_cost, pkg_items = calculate_packaging_cost(pkg_key, pkg_qty, inventory, recipes)
+            pkg_cost, pkg_items, pkg_warnings = calculate_packaging_cost(pkg_key, pkg_qty, inventory, recipes)
             total += pkg_cost
             result['breakdown'].extend(pkg_items)
+            result['warnings'].extend(pkg_warnings)
             result['charm_cost'] = round(total - pkg_cost, 4)
             result['packaging_cost'] = round(pkg_cost, 4)
             result['total_cost'] = round(total, 4)
@@ -196,8 +215,10 @@ def calculate_cost(sku, inventory, recipes):
     finding_multiplier = multipliers['finding']
 
     for mat_id, qty in charm_recipe.items():
-        cost, mat = calculate_material_cost(mat_id, qty * charm_multiplier, inventory)
+        cost, mat, warning = calculate_material_cost(mat_id, qty * charm_multiplier, inventory)
         result['charm_cost'] += cost
+        if warning:
+            result['warnings'].append(warning)
         result['breakdown'].append({
             'category': 'charm', 'material_id': mat_id,
             'material_label': material_label(mat_id, mat),
@@ -210,8 +231,10 @@ def calculate_cost(sku, inventory, recipes):
     if category == 'NK':
         if 'nk0' in recipes:
             for mat_id, qty in recipes['nk0'].items():
-                cost, mat = calculate_material_cost(mat_id, qty * finding_multiplier, inventory)
+                cost, mat, warning = calculate_material_cost(mat_id, qty * finding_multiplier, inventory)
                 finding_total += cost
+                if warning:
+                    result['warnings'].append(warning)
                 result['breakdown'].append({
                     'category': 'finding', 'material_id': mat_id,
                     'material_label': material_label(mat_id, mat),
@@ -220,8 +243,10 @@ def calculate_cost(sku, inventory, recipes):
         if length and length > 0:
             if 'nk[n]' in recipes:
                 for mat_id, qty in recipes['nk[n]'].items():
-                    cost, mat = calculate_material_cost(mat_id, qty * finding_multiplier, inventory)
+                    cost, mat, warning = calculate_material_cost(mat_id, qty * finding_multiplier, inventory)
                     finding_total += cost
+                    if warning:
+                        result['warnings'].append(warning)
                     result['breakdown'].append({
                         'category': 'finding', 'material_id': mat_id,
                         'material_label': material_label(mat_id, mat),
@@ -240,8 +265,10 @@ def calculate_cost(sku, inventory, recipes):
         finding_recipe_key = category.lower()
         if finding_recipe_key in recipes:
             for mat_id, qty in recipes[finding_recipe_key].items():
-                cost, mat = calculate_material_cost(mat_id, qty * finding_multiplier, inventory)
+                cost, mat, warning = calculate_material_cost(mat_id, qty * finding_multiplier, inventory)
                 finding_total += cost
+                if warning:
+                    result['warnings'].append(warning)
                 result['breakdown'].append({
                     'category': 'finding', 'material_id': mat_id,
                     'material_label': material_label(mat_id, mat),
@@ -253,9 +280,10 @@ def calculate_cost(sku, inventory, recipes):
     result['combined_finding_cost'] = round(finding_total + chain_cost, 4)
 
     pkg_key, pkg_qty = packaging_rule
-    pkg_cost, pkg_items = calculate_packaging_cost(pkg_key, pkg_qty, inventory, recipes)
+    pkg_cost, pkg_items, pkg_warnings = calculate_packaging_cost(pkg_key, pkg_qty, inventory, recipes)
     result['packaging_cost'] = round(pkg_cost, 4)
     result['breakdown'].extend(pkg_items)
+    result['warnings'].extend(pkg_warnings)
 
     result['charm_cost'] = round(result['charm_cost'], 4)
     result['total_cost'] = round(
@@ -291,6 +319,12 @@ def format_output(result):
         cost = item['cost']
         note = f"  [{item.get('note', '')}]" if item.get('note') else ""
         lines.append(f"  \u2022 {label}: {qty_str} @ ${cost:.4f}{note}")
+
+    if result.get('warnings'):
+        lines.append("")
+        lines.append("Warnings:")
+        for w in result['warnings']:
+            lines.append(f"  \u26a0\ufe0f {w}")
 
     lines.append("")
     return "\n".join(lines)

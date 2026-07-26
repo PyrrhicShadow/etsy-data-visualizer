@@ -2,6 +2,13 @@
 """
 Recipe Generator for Pyrrhic Silva Shop
 Translates 4B pride flag recipes to 6P and 8R equivalents
+
+GUI NOTE: translate_recipe() and generate_recipes() now return warnings
+as data (a list of strings) instead of print()-ing them, and
+generate_recipes() bundles everything a caller needs -- new recipes,
+warnings, skip count, and the "missing inventory materials" checklist --
+into one result dict via build_generation_report(). main() is reduced to
+input()/output-file handling and calling render_report() for CLI text.
 """
 
 import csv
@@ -47,69 +54,131 @@ PRESERVE_IDS = {
     '1500', '1501', '1502', '1503',
 }
 
+MISSING_INVENTORY_IDS = {
+    '6p': (['1401', '1402', '1403', '1404', '1405', '1406',
+            '1407', '1408', '1409', '1410', '1412', '1413', '1414', '1415'],
+           '6mm [color] pearl glass beads (from box 1420)'),
+    '8r': (['1201', '1212', '1214', '1215'],
+           '8mm [color] round jelly glass beads'),
+    '4c': (['1601', '1602', '1603', '1604', '1605', '1606',
+            '1607', '1608', '1609', '1610', '1611', '1612', '1613', '1614', '1615'],
+           '6mm [color] round plastic pearl beads'),
+}
+
+
 def translate_recipe(recipe, target_type, color_map, charm_map):
-    """Translate a 4B recipe to 6P, 8R, or 4C."""
+    """Translate a 4B recipe to 6P, 8R, or 4C.
+
+    Returns (translated_dict, warnings). Warnings are plain strings
+    describing anything unusual encountered (unrecognized color with no
+    target equivalent, unknown material passed through unchanged) --
+    they used to be print()-ed here, which meant a caller had no way to
+    know something odd happened without scraping stdout.
+    """
     translated = {}
+    warnings = []
     target_index = {'6p': 0, '8r': 1, '4c': 2}
     idx = target_index[target_type]
-    
+
     for mat_id, qty in recipe.items():
         if mat_id.startswith('11') and mat_id in color_map:
             new_id = color_map[mat_id][idx]
-            
+
             if new_id is None:
-                print(f"  ⚠️ No {target_type.upper()} equivalent for color {mat_id}")
+                warnings.append(f"No {target_type.upper()} equivalent for color {mat_id}")
                 continue
-            
+
             if new_id in translated:
                 translated[new_id] += qty
             else:
                 translated[new_id] = qty
-        
+
         elif mat_id in charm_map.get(target_type, {}):
             new_charm = charm_map[target_type][mat_id]
             translated[new_charm] = qty
-        
+
         elif mat_id in PRESERVE_IDS:
             translated[mat_id] = qty
-        
+
         else:
-            print(f"  ⚠️ Unknown material {mat_id} in recipe, passing through")
+            warnings.append(f"Unknown material {mat_id} in recipe, passing through")
             translated[mat_id] = qty
-    
-    return translated
+
+    return translated, warnings
+
 
 def generate_recipes(recipes):
     """Generate 4C, 6P, and 8R recipes from 4B recipes.
-    Only generates recipes that don't already exist in the data."""
+    Only generates recipes that don't already exist in the data.
+
+    Returns (output, warnings, skipped) -- same shape as before, except
+    warnings now includes both translate_recipe()'s per-material warnings
+    (prefixed with the SKU they came from) and the pre-existing
+    "empty recipe" warnings, all as plain strings instead of some being
+    printed immediately and others being collected.
+    """
     output = {}
     warnings = []
     skipped = 0
-    
+
     pride_skus = [sku for sku in recipes if sku.startswith('4b-')]
-    
+
     for sku in pride_skus:
         recipe = recipes[sku]
         flag_name = sku[3:]  # Strip "4b-" prefix
-        
+
         for target in ['4c', '6p', '8r']:
             new_sku = f"{target}-{flag_name}"
-            
+
             if new_sku in recipes:
                 skipped += 1
                 continue
-            
-            translated = translate_recipe(recipe, target, COLOR_MAP, CHARM_MAP)
+
+            translated, translate_warnings = translate_recipe(recipe, target, COLOR_MAP, CHARM_MAP)
             output[new_sku] = translated
-            
+            warnings.extend(f"{new_sku}: {w}" for w in translate_warnings)
+
             if not translated:
                 warnings.append(f"{new_sku}: empty recipe")
-    
+
     return output, warnings, skipped
+
+
+def missing_inventory_materials(inventory):
+    """Return {target_type: [(material_id, suggested_name), ...]} for
+    every material ID a translation target needs but that isn't in
+    InventoryData.csv yet. Pure lookup, no printing -- this used to be
+    inlined in main() as a print loop."""
+    missing = {}
+    for target, (ids, name_template) in MISSING_INVENTORY_IDS.items():
+        missing[target] = [(mid, name_template) for mid in ids if mid not in inventory]
+    return missing
+
+
+def build_generation_report(inventory, recipes):
+    """One-stop compute function: runs generate_recipes() and
+    missing_inventory_materials() and bundles everything a caller (CLI
+    or GUI) needs into a single result dict. This is the function a GUI
+    should call -- it never touches stdin/stdout."""
+    all_recipes, warnings, skipped = generate_recipes(recipes)
+
+    counts_by_target = {
+        target: len([r for r in all_recipes if r.startswith(f'{target}-')])
+        for target in ('4c', '6p', '8r')
+    }
+
+    return {
+        'recipes': all_recipes,
+        'warnings': warnings,
+        'skipped': skipped,
+        'counts_by_target': counts_by_target,
+        'missing_inventory': missing_inventory_materials(inventory),
+    }
+
 
 def write_recipes_csv(recipes, filename):
     """Write recipes to CSV in the same format as RecipesData.csv.
-    
+
     Format: sku,matID*qty,matID*qty,...,padding to 10 columns
     """
     # Sort: original recipes first (alphabetical), then new ones grouped by type
@@ -119,93 +188,79 @@ def write_recipes_csv(recipes, filename):
             prefix, rest = sku.split('-', 1)
             return (prefix, rest)
         return (sku, '')
-    
+
     sorted_skus = sorted(recipes.keys(), key=sort_key)
-    
+
     with open(filename, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
-        
+
         # Header: sku + 10 material columns
         header = ['sku', 'materials'] + [''] * 8
         writer.writerow(header)
-        
+
         for sku in sorted_skus:
             materials = recipes[sku]
             cells = [sku]
-            
+
             # Convert dict to matID*qty strings
             for mat_id, qty in materials.items():
                 cells.append(f"{mat_id}*{qty}")
-            
+
             # Pad to 10 columns (matching original format)
             while len(cells) < 10:
                 cells.append('')
-            
+
             writer.writerow(cells)
+
+
+def render_report_cli(report):
+    """CLI-only text renderer for build_generation_report()'s output.
+    The only function in this module that prints anything."""
+    print(f"  \u2713 {len(report['recipes'])} new recipes generated")
+    print(f"  \u2298 {report['skipped']} recipes already existed (skipped)")
+
+    print("\n" + "-" * 40)
+    for target in ['4c', '6p', '8r']:
+        print(f"  {target.upper()}: {report['counts_by_target'][target]} recipes")
+
+    if report['warnings']:
+        print(f"\n\u26a0\ufe0f {len(report['warnings'])} warning(s):")
+        for w in report['warnings']:
+            print(f"  - {w}")
+
+    print("\n\U0001F4CB Materials to add to InventoryData.csv:")
+    for target, label in (('6p', '6P pearl colors'), ('8r', '8R jelly colors'), ('4c', '4C cube colors')):
+        print(f"  {label}:")
+        for mat_id, name_template in report['missing_inventory'][target]:
+            print(f"    {mat_id}: {name_template}")
+
 
 def main():
     print("=" * 60)
     print("RECIPE GENERATOR - Pyrrhic Silva Shop")
     print("=" * 60)
-    
-    # Load data
+
     print("\nLoading inventory...")
     inventory = load_inventory('InventoryData.csv')
-    print(f"  ✓ {len(inventory)} materials loaded")
-    
+    print(f"  \u2713 {len(inventory)} materials loaded")
+
     print("Loading recipes...")
     recipes = load_recipes('RecipesData.csv')
-    print(f"  ✓ {len(recipes)} recipes loaded")
-    
-    # Generate
+    print(f"  \u2713 {len(recipes)} recipes loaded")
+
     print("\nGenerating missing 4C, 6P, and 8R recipes...")
-    all_recipes, warnings, skipped = generate_recipes(recipes)
-    
-    print(f"  ✓ {len(all_recipes)} new recipes generated")
-    print(f"  ⊘ {skipped} recipes already existed (skipped)")
-    
-    # Show summary
-    print("\n" + "-" * 40)
-    for target in ['4c', '6p', '8r']:
-        count = len([r for r in all_recipes if r.startswith(f'{target}-')])
-        print(f"  {target.upper()}: {count} recipes")
-    
-    # Warnings
-    if warnings:
-        print(f"\n⚠️ {len(warnings)} warning(s):")
-        for w in warnings:
-            print(f"  - {w}")
-    
-    # Check for missing inventory entries
-    missing_8r = ['1201', '1212', '1214', '1215']
-    missing_6p = ['1401', '1402', '1403', '1404', '1405', '1406', 
-                   '1407', '1408', '1409', '1410', '1412', '1413', '1414', '1415']
-    missing_4c = ['1601', '1602', '1603', '1604', '1605', '1606', 
-                   '1607', '1608', '1609', '1610', '1611', '1612', '1613', '1614', '1615']
-    
-    print("\n📋 Materials to add to InventoryData.csv:")
-    print("  6P pearl colors:")
-    for mid in missing_6p:
-        if mid not in inventory:
-            print(f"    {mid}: 6mm [color] pearl glass beads (from box 1420)")
-    print("  8R jelly colors:")
-    for mid in missing_8r:
-        if mid not in inventory:
-            print(f"    {mid}: 8mm [color] round jelly glass beads")
-    print("  4C cube colors:")
-    for mid in missing_4c: 
-        if mid not in inventory: 
-            print(f"    {mid}: 6mm [color] round plastic pearl beads")
-    
-    # Save output as CSV
+    report = build_generation_report(inventory, recipes)
+    render_report_cli(report)
+
     output_path = input("\nEnter output path (or press Enter for TempMissingRecipes.csv): ").strip()
     if not output_path:
         output_path = 'TempMissingRecipes.csv'
-    
-    write_recipes_csv(all_recipes, output_path)
-    
-    print(f"\n✓ Saved to {output_path}")
-    print(f"  Total recipes: {len(all_recipes)}")
+
+    write_recipes_csv(report['recipes'], output_path)
+
+    print(f"\n\u2713 Saved to {output_path}")
+    print(f"  Total recipes: {len(report['recipes'])}")
+
 
 if __name__ == '__main__':
     main()

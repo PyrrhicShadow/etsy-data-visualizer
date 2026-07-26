@@ -50,10 +50,21 @@ skuKey.txt and skuParser.py, then checked against the sample trends file):
     matches, no further sub-columns.
 
 Columns that exist in skuParser.py's flag list but do NOT have a column
-in the trends format are not silently dropped: if one is ever sold, this
-script prints a warning and still counts it toward "items sold" and the
+in the trends format are not silently dropped: if one is ever sold, a
+warning is generated and it still counts it toward "items sold" and the
 bead-type column, but the specific design won't appear anywhere else in
 the CSV until a column is added for it.
+
+GUI NOTE: every warning path in this module used to print() directly,
+including one that fired at IMPORT TIME just from loading the module
+(the trend-column cross-check) -- which meant a GUI couldn't even
+`import salesToTrendsGen` without text going to stdout it can't control.
+That check now stores its result in UNREFERENCED_TREND_COLUMNS instead
+of printing. parse_sku_row() and build_day_rows() return warnings as
+data. compute_trend_diffs() replaces compare_trends()'s printing with a
+structured diff list; render_diffs() is the CLI-only renderer for it.
+generate_trends_report() is the one-stop compute function tying all of
+this together for a caller that just wants the data.
 """
 
 import csv
@@ -118,12 +129,13 @@ def all_expected_trend_columns():
         if entry['trend_column'] is not None:
             cols.add(entry['trend_column'])
 
-    cols.add(vocab.TART_INFO['trend_column'])
     for _code, info in vocab.FINDINGS_LEN.items():
         if info.get('trend_column'):
             cols.add(info['trend_column'])
         if info.get('length_trend_column'):
             cols.add(info['length_trend_column'])
+
+    cols.add(vocab.TART_INFO['trend_column'])
 
     return cols
 
@@ -164,12 +176,14 @@ def validate_against_trend_columns(trend_columns, raise_on_error=False):
     return missing, unreferenced
 
 # --- run the cross-check immediately after TREND_COLUMNS is defined ---
-_missing, _unreferenced = validate_against_trend_columns(
+# raise_on_error=True still applies here: a MISSING column is a real bug
+# (a design would silently stop being counted), so that case should keep
+# failing loudly at import time. An UNREFERENCED column is informational
+# only, so it's stored for a caller to inspect/display instead of printed
+# -- importing this module should never write to stdout on its own.
+_missing, UNREFERENCED_TREND_COLUMNS = validate_against_trend_columns(
     TREND_COLUMNS, raise_on_error=True
 )
-if _unreferenced:
-    print(f"  \u2139\ufe0f  {len(_unreferenced)} trend column(s) not tied to any "
-          f"vocabulary code (expected for structural columns): {_unreferenced}")
 
 NON_PRODUCT_TOKENS = {
     'custom', 'cancel', 'refund', 'package bounced',
@@ -181,33 +195,38 @@ from skuVocab import FINDINGS
 _FINDING_CODES = set(FINDINGS.keys())
 
 
-def parse_sku(sku_original):
+def parse_sku_row(sku_original):
     """Adapter: same return shape build_day_rows() already expects,
-    but the actual parsing is delegated to skuParser.parse_sku()."""
+    but the actual parsing is delegated to skuParser.parse_sku().
+
+    Returns (parsed_or_None, warning_or_None) instead of printing --
+    parsed is None for rows that aren't a real product line (non-product
+    tokens, USPS rows, blank SKUs) and {'error': True} for SKUs that
+    couldn't be parsed at all, same as before."""
     sku = sku_original.strip()
     if not sku:
-        return None
+        return None, None
     if sku.lower() in NON_PRODUCT_TOKENS or sku.lower().startswith('usps'):
-        return None
+        return None, None
 
     parsed = _shared_parse_sku(sku)
 
     if parsed.get('error'):
-        print(f"  ⚠️  Warning: could not recognize SKU '{sku_original}', skipping.")
-        return {'error': True}
+        return {'error': True}, f"Could not recognize SKU '{sku_original}', skipping."
 
     if parsed['category'] == 'TART':
-        return {'kind': 'tart', 'tart_n': parsed['tart_n']}
+        return {'kind': 'tart', 'tart_n': parsed['tart_n']}, None
 
     if parsed.get('is_standalone'):
-        return {'kind': 'ten_thirteen_star'}
+        return {'kind': 'ten_thirteen_star'}, None
 
+    warning = None
     if parsed.get('unmatched_design_token'):
-        print(f"  ⚠️  Warning: design token '{parsed['unmatched_design_token']}' on SKU "
-              f"'{sku_original}' isn't recognized in skuVocab.py yet.")
+        warning = (f"Design token '{parsed['unmatched_design_token']}' on SKU "
+                   f"'{sku_original}' isn't recognized in skuVocab.py yet.")
 
     category = parsed['category']
-    return {
+    result = {
         'kind': 'standard',
         'prefix': parsed['prefix'],
         'flag': parsed['design'],
@@ -216,16 +235,26 @@ def parse_sku(sku_original):
         'brace_length': parsed['length'] if category in ('BRAC', 'BRAC-E') else None,
         'brace_type': 'chain' if category == 'BRAC' else 'elastic' if category == 'BRAC-E' else None,
     }
+    return result, warning
 
 from shopIO import load_valid_sales_rows
 
 def load_valid_line_items(sales_path):
+    """Returns (order_items, order_date, warnings). warnings combines
+    row-loading warnings from shopIO (bad quantity/date) and SKU-parsing
+    warnings from parse_sku_row (unrecognized SKU, unmatched design
+    token) -- all as plain strings, none printed here."""
     order_items = defaultdict(list)
     order_date = {}
+    warnings = []
 
-    rows = load_valid_sales_rows(sales_path)
+    rows, row_warnings = load_valid_sales_rows(sales_path)
+    warnings.extend(row_warnings)
+
     for r in rows:
-        parsed = parse_sku(r['sku'])
+        parsed, warning = parse_sku_row(r['sku'])
+        if warning:
+            warnings.append(warning)
         if parsed is None or parsed.get('error'):
             continue
 
@@ -234,7 +263,7 @@ def load_valid_line_items(sales_path):
         if onum not in order_date or r['date'] < order_date[onum]:
             order_date[onum] = r['date']
 
-    return order_items, order_date
+    return order_items, order_date, warnings
 
 
 def build_day_rows(order_items, order_date):
@@ -450,7 +479,7 @@ def main():
         sales_path = 'PyrrhicSilvaShopSales.csv'
 
     print(f"\nReading {sales_path} ...")
-    order_items, order_date = load_valid_line_items(sales_path)
+    order_items, order_date, _warnings = load_valid_line_items(sales_path)
     print(f"  \u2713 {len(order_items)} orders with valid line items")
 
     days = build_day_rows(order_items, order_date)

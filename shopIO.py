@@ -12,6 +12,11 @@ SKU parsing, pride-flag vocabulary, or trend columns -- that's skuVocab.py
 and each script's own aggregation logic. Keeping these separate means a
 change to "how do we read a CSV row" doesn't require touching "what do we
 do with that row."
+
+GUI NOTE: load_valid_sales_rows() used to print warnings directly for
+malformed rows (bad quantity, bad date). It now returns those as a
+`warnings` list alongside the rows instead, so a caller (CLI or GUI) can
+decide how to surface them instead of them going straight to stdout.
 """
 
 import csv
@@ -86,16 +91,17 @@ def load_recipes(filename):
 
 
 def load_valid_sales_rows(filename, date_format="%A, %B %d, %Y"):
-    """Read the sales export and return a list of cleaned, validated row
-    dicts: {'order_number', 'date' (datetime), 'quantity' (int), 'sku',
-    'row' (the raw DictReader row, for any script-specific field access)}.
+    """Read the sales export and return (rows, warnings).
 
-    A row is dropped (with a printed warning where the data itself looks
-    malformed, silently where it's just structurally empty) if:
-      - date or order number is blank
-      - item quantity doesn't parse as an int, or is < 1 (cancellations
-        and refunds carry negative or zero quantities)
-      - the date doesn't match date_format
+    rows is a list of cleaned, validated row dicts: {'order_number',
+    'date' (datetime), 'quantity' (int), 'sku', 'row' (the raw DictReader
+    row, for any script-specific field access)}.
+
+    warnings is a list of plain strings describing rows that were dropped
+    because the data itself looked malformed (bad quantity, bad date) --
+    as opposed to rows dropped silently because they're structurally
+    empty (missing date/order number, which is expected for blank
+    trailing rows in the export and not worth surfacing).
 
     This is the ONE place the "is this row a real, countable order line"
     rule lives. Anything beyond that -- SKU parsing, non-product-token
@@ -103,6 +109,7 @@ def load_valid_sales_rows(filename, date_format="%A, %B %d, %Y"):
     the caller, since that varies by script.
     """
     rows = []
+    warnings = []
     with open(filename, 'r', newline='', encoding='utf-8-sig') as csvfile:
         reader = csv.DictReader(csvfile)
         for row in reader:
@@ -117,7 +124,7 @@ def load_valid_sales_rows(filename, date_format="%A, %B %d, %Y"):
             try:
                 quantity = int(quantity_str)
             except ValueError:
-                print(f"Warning: Invalid quantity '{quantity_str}', skipping...")
+                warnings.append(f"Invalid quantity '{quantity_str}' (order {order_num}), skipping.")
                 continue
             if quantity < 1:
                 continue  # cancellations / refunds
@@ -125,7 +132,7 @@ def load_valid_sales_rows(filename, date_format="%A, %B %d, %Y"):
             try:
                 parsed_date = datetime.strptime(date_str, date_format)
             except ValueError:
-                print(f"Warning: Could not parse date '{date_str}', skipping...")
+                warnings.append(f"Could not parse date '{date_str}' (order {order_num}), skipping.")
                 continue
 
             rows.append({
@@ -135,7 +142,7 @@ def load_valid_sales_rows(filename, date_format="%A, %B %d, %Y"):
                 'sku': sku,
                 'row': row,
             })
-    return rows
+    return rows, warnings
 
 
 def earliest_dates_by_order(rows):
