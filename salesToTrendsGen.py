@@ -8,7 +8,7 @@ one row per day of sales, one column per bead type / finding / design, plus
 a Total row at the bottom.
 
 USAGE:
-    python3 generateTrends.py
+    python3 salesToTrendsGen.py
 
 You'll be prompted for the sales CSV path and an output path.
 
@@ -55,16 +55,23 @@ warning is generated and it still counts it toward "items sold" and the
 bead-type column, but the specific design won't appear anywhere else in
 the CSV until a column is added for it.
 
-GUI NOTE: every warning path in this module used to print() directly,
-including one that fired at IMPORT TIME just from loading the module
-(the trend-column cross-check) -- which meant a GUI couldn't even
-`import salesToTrendsGen` without text going to stdout it can't control.
-That check now stores its result in UNREFERENCED_TREND_COLUMNS instead
-of printing. parse_sku_row() and build_day_rows() return warnings as
-data. compute_trend_diffs() replaces compare_trends()'s printing with a
-structured diff list; render_diffs() is the CLI-only renderer for it.
-generate_trends_report() is the one-stop compute function tying all of
-this together for a caller that just wants the data.
+GUI NOTE: every warning path in this module now returns warnings as data
+instead of print()-ing them, including the "design has no trends column"
+case inside build_day_rows() (previously a bare print() buried in the
+row-building loop) and the "couldn't parse reference date" case inside
+load_reference_trends() (same problem). compute_trend_diffs() replaces
+the old compare_trends() -- it returns a structured list of per-date diff
+records instead of printing; render_diffs_cli() is the CLI-only renderer
+for that output. generate_trends_report() is the one-stop compute entry
+point: it loads the sales file, builds the day rows, and (if a reference
+trends file exists) computes the diff report, bundling every warning
+from every stage into one list. main() only handles input()/print() and
+calls generate_trends_report() -- it does no parsing or aggregation
+itself anymore. The module-level trend-column cross-check still runs at
+import time (a genuinely missing column is a real bug that should fail
+loudly), but it stores its result in UNREFERENCED_TREND_COLUMNS rather
+than printing, so importing this module never writes to stdout on its
+own.
 """
 
 import csv
@@ -267,8 +274,18 @@ def load_valid_line_items(sales_path):
 
 
 def build_day_rows(order_items, order_date):
-    """Returns dict date(datetime) -> row dict (column name -> numeric total)."""
+    """Returns (days, warnings).
+
+    days: dict date(datetime) -> row dict (column name -> numeric total)
+    warnings: list of plain strings, one per line item whose design flag
+    is a recognized code but has no trends column mapped to it yet (it's
+    still counted in 'items sold' and the bead-type column, but nowhere
+    else). This used to be a bare print() buried inside the row-building
+    loop; it's now returned like every other warning in this module so a
+    GUI (or CLI) can decide how/whether to surface it.
+    """
     days = defaultdict(lambda: defaultdict(int))
+    warnings = []
 
     for order_num, items in order_items.items():
         day = order_date[order_num]
@@ -313,12 +330,13 @@ def build_day_rows(order_items, order_date):
                 if col:
                     row[col] += qty
                 else:
-                    print(f"  ⚠️  Warning: design '{parsed['flag']}' has no trends column yet "
+                    warnings.append(
+                        f"Design '{parsed['flag']}' has no trends column yet "
                         f"(order dated {day:%A, %B %d, %Y}); counted in 'items sold' and "
-                        f"'{prefix}' only.")
+                        f"'{prefix}' only."
+                    )
 
             # finding
-            finding = parsed['finding']
             finding = parsed['finding']
             if finding and finding in FINDINGS:
                 trend_col = FINDINGS[finding]['trend_column']
@@ -339,10 +357,14 @@ def build_day_rows(order_items, order_date):
                 row['BRAC-e (elastic bracelets)'] += qty
                 row['BRAC (inches)'] += parsed['brace_length'] * qty
 
-    return days
+    return days, warnings
 
 
 def write_trends_csv(days, output_path):
+    """Writes the generated trend rows to a CSV file. This is a file
+    output action (like recipeGen4B.py's write_recipes_csv), not console
+    presentation -- it stays separate from render_diffs_cli()/main()'s
+    print() calls."""
     with open(output_path, 'w', newline='', encoding='utf-8') as f:
         writer = csv.writer(f)
         writer.writerow(TREND_COLUMNS)
@@ -393,8 +415,14 @@ def load_reference_trends(path):
     so minor column reordering won't silently misalign values. Blank cells
     are treated as 0. The trailing "Total" row and any blank rows are
     skipped.
+
+    Returns (days, warnings). warnings holds one plain string per
+    reference row whose date couldn't be parsed under any known format
+    (that row is skipped, not counted). Previously printed directly here;
+    now returned like everything else in this module.
     """
     days = {}
+    warnings = []
     with open(path, 'r', newline='', encoding='utf-8-sig') as f:
         reader = csv.reader(f)
         header = next(reader)
@@ -403,8 +431,7 @@ def load_reference_trends(path):
                 continue
             day = _parse_reference_date(row[0])
             if day is None:
-                print(f"  \u26a0\ufe0f  Warning: could not parse reference date "
-                      f"'{row[0]}', skipping that row.")
+                warnings.append(f"Could not parse reference date '{row[0]}', skipping that row.")
                 continue
             row_dict = {}
             for col, val in zip(header[1:], row[1:]):
@@ -418,21 +445,30 @@ def load_reference_trends(path):
                 except ValueError:
                     row_dict[col] = val  # leave as-is; will just show as a mismatch
             days[day] = row_dict
-    return days
+    return days, warnings
 
 
-def compare_trends(generated_days, reference_days):
+def compute_trend_diffs(generated_days, reference_days):
     """
-    Print per-date discrepancies between the freshly generated trends and
-    an existing reference file (hand-tallied or a prior run), so they can
-    be manually checked against the Etsy dashboard.
+    Compare freshly generated trends against an existing reference file
+    (hand-tallied or a prior run) and return the discrepancies as data,
+    so they can be checked against the Etsy dashboard however the caller
+    wants (CLI text, a GUI diff view, etc.).
 
-    A date only in one side is flagged as such. For dates in both, only
-    columns whose values actually differ are printed - matching columns
-    are not noise here.
+    A date only on one side gets a record with no diffs list. For dates
+    on both sides, only columns whose values actually differ are
+    included -- matching columns are not noise here.
+
+    Returns a list of dicts, one per date with any discrepancy:
+        {'label': 'Tuesday, April 22, 2025',
+         'status': 'only_generated' | 'only_reference' | 'diffs',
+         'diffs': [(col, generated_val, reference_val), ...]}  # [] for only_* statuses
+
+    Pure function -- no printing. render_diffs_cli() is the CLI-only
+    renderer for this output.
     """
     all_dates = sorted(set(generated_days) | set(reference_days))
-    discrepancy_count = 0
+    diffs_report = []
 
     for day in all_dates:
         label = f"{day.strftime('%A, %B')} {day.day}, {day.year}"
@@ -440,15 +476,12 @@ def compare_trends(generated_days, reference_days):
         theirs = reference_days.get(day)
 
         if mine is not None and theirs is None:
-            print(f"{label}  -- only in generated output (missing from reference file)")
-            discrepancy_count += 1
+            diffs_report.append({'label': label, 'status': 'only_generated', 'diffs': []})
             continue
         if mine is None and theirs is not None:
-            print(f"{label}  -- only in reference file (missing from generated output)")
-            discrepancy_count += 1
+            diffs_report.append({'label': label, 'status': 'only_reference', 'diffs': []})
             continue
 
-        # present in both - compare column by column (skip 'date' itself)
         diffs = []
         columns = [c for c in TREND_COLUMNS if c != 'date']
         for col in columns:
@@ -460,17 +493,71 @@ def compare_trends(generated_days, reference_days):
                 diffs.append((col, a, b))
 
         if diffs:
-            print(f"{label}")
-            for col, a, b in diffs:
+            diffs_report.append({'label': label, 'status': 'diffs', 'diffs': diffs})
+
+    return diffs_report
+
+
+def render_diffs_cli(diffs_report):
+    """CLI-only text renderer for compute_trend_diffs()'s output. The
+    only function in this module concerned with discrepancy display."""
+    if not diffs_report:
+        print("No discrepancies found - generated output matches the reference file exactly.")
+        return
+
+    for entry in diffs_report:
+        label = entry['label']
+        if entry['status'] == 'only_generated':
+            print(f"{label}  -- only in generated output (missing from reference file)")
+        elif entry['status'] == 'only_reference':
+            print(f"{label}  -- only in reference file (missing from generated output)")
+        else:
+            print(label)
+            for col, a, b in entry['diffs']:
                 a_disp = _fmt(a) if isinstance(a, (int, float)) else a
                 b_disp = _fmt(b) if isinstance(b, (int, float)) else b
                 print(f"    {col:35s} generated={a_disp!s:<10s} reference={b_disp!s}")
-            discrepancy_count += 1
 
-    if discrepancy_count == 0:
-        print("No discrepancies found - generated output matches the reference file exactly.")
-    else:
-        print(f"\n{discrepancy_count} date(s) with discrepancies (see above).")
+    print(f"\n{len(diffs_report)} date(s) with discrepancies (see above).")
+
+
+def generate_trends_report(sales_path, reference_path=None):
+    """One-stop compute entry point: reads the sales CSV, builds the
+    trend day rows, and -- if reference_path is given and exists --
+    loads that reference file and computes the diff report against it.
+    Bundles every warning from every stage (row loading, SKU parsing,
+    day-row building, reference loading) into a single list.
+
+    No printing, no input() -- this is what a GUI should call. main()
+    is reduced to input()/print() around this and write_trends_csv().
+
+    Returns:
+        {
+          'order_count': int,
+          'days': {date: {col: val}},
+          'warnings': [...],
+          'reference_days': {date: {col: val}} or None,
+          'diffs': [...] or None,   # compute_trend_diffs() output, None if no reference
+        }
+    """
+    order_items, order_date, warnings = load_valid_line_items(sales_path)
+    days, day_row_warnings = build_day_rows(order_items, order_date)
+    warnings = list(warnings) + day_row_warnings
+
+    reference_days = None
+    diffs = None
+    if reference_path and os.path.isfile(reference_path):
+        reference_days, ref_warnings = load_reference_trends(reference_path)
+        warnings.extend(ref_warnings)
+        diffs = compute_trend_diffs(days, reference_days)
+
+    return {
+        'order_count': len(order_items),
+        'days': days,
+        'warnings': warnings,
+        'reference_days': reference_days,
+        'diffs': diffs,
+    }
 
 
 def main():
@@ -478,39 +565,41 @@ def main():
     if not sales_path:
         sales_path = 'PyrrhicSilvaShopSales.csv'
 
-    print(f"\nReading {sales_path} ...")
-    order_items, order_date, _warnings = load_valid_line_items(sales_path)
-    print(f"  \u2713 {len(order_items)} orders with valid line items")
-
-    days = build_day_rows(order_items, order_date)
-    print(f"  \u2713 {len(days)} distinct sale days")
-
-    # Compare against an existing hand-tallied (or previously generated)
-    # trends CSV in the same folder as the sales export, so discrepancies
-    # can be checked manually against the Etsy dashboard.
-    # only write fresh trends CSV if no existing one available
+    # Reference file is looked for alongside the sales CSV, same as before.
     reference_path = os.path.join(
         os.path.dirname(os.path.abspath(sales_path)), 'PyrrhicSilvaShopTrends.csv'
     )
+
+    print(f"\nReading {sales_path} ...")
+    report = generate_trends_report(sales_path, reference_path)
+
+    print(f"  \u2713 {report['order_count']} orders with valid line items")
+    print(f"  \u2713 {len(report['days'])} distinct sale days")
+
+    if report['warnings']:
+        print(f"\n\u26a0\ufe0f  {len(report['warnings'])} warning(s):")
+        for w in report['warnings']:
+            print(f"  - {w}")
+
     print(f"\nLooking for reference file at {reference_path} ...")
-    if not os.path.isfile(reference_path):
+
+    if report['reference_days'] is None:
         print("  (not found - skipping comparison)")
 
         output_path = input("Enter output path (or Enter for TempTrendsGenerated.csv): ").strip()
         if not output_path:
             output_path = 'TempTrendsGenerated.csv'
 
-        write_trends_csv(days, output_path)
+        write_trends_csv(report['days'], output_path)
         print(f"\n\u2713 Saved to {output_path}")
         return
 
-    reference_days = load_reference_trends(reference_path)
-    print(f"  \u2713 loaded {len(reference_days)} dated rows from reference file")
+    print(f"  \u2713 loaded {len(report['reference_days'])} dated rows from reference file")
 
     print("\n" + "=" * 60)
     print("DISCREPANCIES vs PyrrhicSilvaShopTrends.csv")
     print("=" * 60 + "\n")
-    compare_trends(days, reference_days)
+    render_diffs_cli(report['diffs'])
 
 
 if __name__ == '__main__':
