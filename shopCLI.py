@@ -55,6 +55,7 @@ import skuCostLookup
 import skuParser
 import countOrdersDayOfWeek
 import countOrdersSubMonths
+import salesToTrendsGen
 
 
 # ---------------------------------------------------------------------
@@ -65,6 +66,7 @@ class ShopData:
         self.inventory_path = 'InventoryData.csv'
         self.recipes_path = 'RecipesData.csv'
         self.sales_path = 'PyrrhicSilvaShopSales.csv'
+        self.trends_path = 'PyrrhicSilvaShopTrends.csv'
         self._inventory = None
         self._recipes = None
         self._sales_rows = None
@@ -92,12 +94,15 @@ class ShopData:
         inv = input(f"  Inventory CSV [{self.inventory_path}]: ").strip()
         rec = input(f"  Recipes CSV   [{self.recipes_path}]: ").strip()
         sal = input(f"  Sales CSV     [{self.sales_path}]: ").strip()
+        trn = input(f"  Trends CSV    [{self.trends_path}] (reference file, optional): ").strip()
         if inv:
             self.inventory_path = inv
         if rec:
             self.recipes_path = rec
         if sal:
             self.sales_path = sal
+        if trn:
+            self.trends_path = trn
         print("  \u2713 paths updated (will load fresh next time a context needs them)")
 
 
@@ -179,6 +184,43 @@ def ctx_sub_months(data):
     countOrdersSubMonths.render_report_cli(result)
 
 
+def ctx_sales_to_trends(data):
+    """salesToTrendsGen.py builds its own line-item view of the sales
+    CSV rather than consuming ShopData.sales_rows() -- it needs quantity
+    per SKU per order, not the same shape the day-of-week/sub-months
+    reports use -- so this calls generate_trends_report() directly on
+    the configured paths instead of going through the shared cache.
+    Reference-file comparison is optional: if data.trends_path doesn't
+    exist on disk, this just generates and offers to save."""
+    import os as _os
+    if not _os.path.isfile(data.sales_path):
+        print(f"\n\u274c Could not find sales CSV at '{data.sales_path}'.")
+        print("   Check the path (main menu -> 'p' to reconfigure paths).")
+        return
+
+    report = salesToTrendsGen.generate_trends_report(data.sales_path, data.trends_path)
+
+    print(f"  \u2713 {report['order_count']} orders with valid line items")
+    print(f"  \u2713 {len(report['days'])} distinct sale days")
+    _print_warnings(report['warnings'])
+
+    if report['reference_days'] is None:
+        print(f"\n  (no reference file found at '{data.trends_path}' -- skipping comparison)")
+    else:
+        print(f"\n  \u2713 compared against {len(report['reference_days'])} dated rows in '{data.trends_path}'")
+        print("\n" + "-" * 60)
+        salesToTrendsGen.render_diffs_cli(report['diffs'])
+
+    save = input("\nSave generated trends to a file? [y/N]: ").strip().lower()
+    if save != 'y':
+        return
+    output_path = input("Output path (or Enter for TempTrendsGenerated.csv): ").strip()
+    if not output_path:
+        output_path = 'TempTrendsGenerated.csv'
+    salesToTrendsGen.write_trends_csv(report['days'], output_path)
+    print(f"\n\u2713 Saved to {output_path}")
+
+
 # ---------------------------------------------------------------------
 # INTERACTIVE contexts (own sub-loop; 'menu'/'exit' returns to main menu)
 # ---------------------------------------------------------------------
@@ -225,12 +267,13 @@ def ctx_sku_parser(data):
 # Menu registry: (key, label, run_fn, auto_exit)
 # ---------------------------------------------------------------------
 CONTEXTS = [
-    ('1', 'Check New Flags        (recipe vs. skuVocab audit)',        ctx_check_new_flags, True),
-    ('2', 'Recipe Gen 4B          (generate 4C/6P/8R from 4B)',        ctx_recipe_gen_4b,   True),
-    ('3', 'SKU Cost Lookup        (interactive)',                      ctx_sku_cost_lookup, False),
-    ('4', 'SKU Parser             (interactive, readable descriptions)', ctx_sku_parser,     False),
-    ('5', 'Orders by Day of Week',                                     ctx_day_of_week,     True),
-    ('6', 'Orders by Month Third',                                     ctx_sub_months,      True),
+    ('1', 'SKU Parser             (interactive, readable descriptions)', ctx_sku_parser,     False),
+    ('2', 'SKU Cost Lookup        (interactive)',                      ctx_sku_cost_lookup, False),
+    ('3', 'Check New Flags        (recipe vs. skuVocab audit)',        ctx_check_new_flags, True),
+    ('4', 'Recipe Gen 4B          (generate 4C/6P/8R from 4B)',        ctx_recipe_gen_4b,   True),
+    ('5', 'Sales -> Trends Generator (vs. reference file, if present)', ctx_sales_to_trends, True),
+    ('6', 'Orders by Day of Week',                                     ctx_day_of_week,     True),
+    ('7', 'Orders by Month Third',                                     ctx_sub_months,      True),
 ]
 
 
@@ -243,7 +286,8 @@ def print_menu(data):
         print(f"  {key}) {label}{tag}")
     print(f"  p) Reconfigure CSV paths")
     print(f"  q) Quit")
-    print(f"\n  Inventory: {data.inventory_path}   Recipes: {data.recipes_path}   Sales: {data.sales_path}")
+    print(f"\n  Inventory: {data.inventory_path}   Recipes: {data.recipes_path}")
+    print(f"  Sales: {data.sales_path}   Trends (reference): {data.trends_path}")
 
 
 def main():
