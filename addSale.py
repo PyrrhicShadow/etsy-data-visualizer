@@ -14,11 +14,26 @@ SCOPE (read this before trusting the output on anything unusual):
     dollar amounts rather than recomputing them fresh -- that lookback
     isn't implemented here. Treat negative-quantity support as untested,
     not as a refund-entry feature.
-  - customer name, customer ID, shipping label ID, ship date, arrival
-    date, transit days, and notes are NOT collected by this script and
-    are written as blank cells, to be filled in by hand later (consistent
-    with how many of your own historical rows leave these blank at time
-    of sale).
+  - customer name and customer ID are now collected (one prompt each,
+    right after order number) and written to every row for that order,
+    matching how the existing sales CSV repeats them per line.
+  - shipping label ID, ship date, arrival date, transit days, and notes
+    are still NOT collected by this script and are written as blank
+    cells, to be filled in by hand later (consistent with how many of
+    your own historical rows leave these blank at time of sale).
+
+INPUT CONVENTIONS:
+  - Sale date is entered as mm/dd/yyyy. It's parsed with
+    datetime.strptime and converted to this project's stored date-string
+    format ('Tuesday, April 22, 2025'). A date that doesn't parse
+    (typo) re-prompts instead of crashing -- it does NOT quit the
+    program, since a bad date is assumed to be a typo, not a bail-out.
+  - Typing 'quit', 'exit', or 'q' at ANY prompt during order/SKU entry
+    aborts the whole order with nothing written -- no partial CSV rows,
+    no traceback. This matches skuParser.py's and skuCostLookup.py's
+    interactive loop convention. It does not apply to the final
+    y/n confirmation or output-path prompt in main(), which already
+    have their own abort path ("Aborted -- nothing written.").
 
 FORMULAS (per Julien, confirmed against multiple historical rows,
 including a refund row with a negative quantity):
@@ -54,7 +69,8 @@ ORDER-LEVEL vs LINE-LEVEL, matching the existing CSV's own convention:
   quantity -- Julien wants the multiplication to happen in the earnings
   calculation, not baked into the stored cell), charm_cost, finding_cost,
   finding_packaging_cost, transaction_fee (each per-unit / per-line, not
-  pre-multiplied by quantity either).
+  pre-multiplied by quantity either), and customer_name / customer_id
+  (repeated per line, matching how the existing CSV stores them).
 
 SHIPPING PRICE ASSUMPTION: the single "shipping price" input serves double
 duty per EtsyFeesRules.md -- for a free-shipping listing it's the real
@@ -78,9 +94,53 @@ for the file-writing step.
 
 import csv
 import os
+from datetime import datetime
 
 from shopIO import load_inventory, load_recipes
 from skuCostLookup import calculate_cost, calculate_envelope_cost
+
+
+class QuitRequested(Exception):
+    """Raised when the user types a quit command at any input() prompt
+    during order entry, so main() can abort cleanly -- no file writes,
+    no traceback -- the same way skuParser.py's and skuCostLookup.py's
+    interactive loops let you back out with 'quit'/'exit'/'q'."""
+    pass
+
+
+QUIT_COMMANDS = ('quit', 'exit', 'q')
+
+
+def _input(prompt):
+    """input() wrapper that raises QuitRequested if the user types a quit
+    command, instead of returning it as a normal value to be parsed as a
+    date/number/SKU. Every prompt in this module goes through this (or
+    prompt_date(), which builds on it) instead of calling input()
+    directly, so bailing out is possible at every step of order entry."""
+    value = input(prompt).strip()
+    if value.lower() in QUIT_COMMANDS:
+        raise QuitRequested()
+    return value
+
+
+def prompt_date():
+    """Prompt for a sale date in mm/dd/yyyy format, re-prompting on a
+    bad/unparseable date instead of crashing (assumed to be a typo, not
+    a quit request). Returns the date already converted to this
+    project's stored date-string format ('Tuesday, April 22, 2025'),
+    matching write_trends_csv()'s own day/month/year construction in
+    salesToTrendsGen.py rather than strftime('%d') (which zero-pads
+    single-digit days -- the existing sales CSV does not, e.g.
+    'May 4, 2025', not 'May 04, 2025')."""
+    while True:
+        raw = _input("Sale date (mm/dd/yyyy): ")
+        try:
+            date_obj = datetime.strptime(raw, "%m/%d/%Y")
+        except ValueError:
+            print(f"  Could not parse '{raw}' as mm/dd/yyyy -- please try again.")
+            continue
+        return f"{date_obj.strftime('%A, %B')} {date_obj.day}, {date_obj.year}"
+
 
 SALES_CSV_HEADER = [
     'date', 'order number', 'item sku', 'item quantity', 'customer name', 'customer ID',
@@ -116,29 +176,38 @@ def prompt_order_info():
     """Collect the per-order fields (asked once per order). Returns a
     plain dict. This is the ONLY place input() is called for order-level
     fields -- kept separate from per-SKU prompting and from
-    compute_sale_rows()."""
-    print("\n--- Order details ---")
-    date_str = input("Sale date (e.g. 'Tuesday, April 22, 2025'): ").strip()
-    order_number = input("Order number: ").strip()
-    num_skus = int(input("Number of unique SKUs in this order: ").strip())
-    discount_pct = float(input("Discount percent applied at checkout (e.g. 25 for 25%, 0 for none): ").strip())
+    compute_sale_rows().
 
-    share_save_input = input("Was this a Share & Save order? (y/n): ").strip().lower()
+    Every prompt goes through _input()/prompt_date(), so typing
+    'quit'/'exit'/'q' at any point here raises QuitRequested and aborts
+    order entry -- no partial order is ever written.
+    """
+    print("\n--- Order details ---")
+    date_str = prompt_date()
+    order_number = _input("Order number: ")
+    customer_name = _input("Customer name: ")
+    customer_id = _input("Customer ID: ")
+    num_skus = int(_input("Number of unique SKUs in this order: "))
+    discount_pct = float(_input("Discount percent applied at checkout (e.g. 25 for 25%, 0 for none): "))
+
+    share_save_input = _input("Was this a Share & Save order? (y/n): ").lower()
     share_and_save = share_save_input in ('y', 'yes', 'true')
     share_save_refund = 0.0
     if share_and_save:
-        share_save_refund = float(input("Exact Share & Save refund dollar amount for this order: $").strip())
+        share_save_refund = float(_input("Exact Share & Save refund dollar amount for this order: $"))
 
-    payment_amount = float(input("Total order payment amount (customer): $").strip())
-    sales_tax = float(input("Sales tax paid by customer: $").strip())
-    shipping_price = float(input(
+    payment_amount = float(_input("Total order payment amount (customer): $"))
+    sales_tax = float(_input("Sales tax paid by customer: $"))
+    shipping_price = float(_input(
         "Shipping price (real label cost you paid if free shipping, "
         "or amount customer paid for shipping otherwise): $"
-    ).strip())
+    ))
 
     return {
         'date_str': date_str,
         'order_number': order_number,
+        'customer_name': customer_name,
+        'customer_id': customer_id,
         'num_skus': num_skus,
         'discount_pct': discount_pct,
         'share_and_save': share_and_save,
@@ -153,13 +222,17 @@ def prompt_sku_lines(num_skus):
     """Collect SKU, quantity, and listing item price for each unique SKU
     in the order. The FIRST one entered here is treated as the "first
     unique SKU" for every order-level field's placement rule. Returns a
-    list of dicts: {'sku', 'quantity', 'item_price'}."""
+    list of dicts: {'sku', 'quantity', 'item_price'}.
+
+    Same quit convention as prompt_order_info(): typing 'quit'/'exit'/'q'
+    at any of these prompts raises QuitRequested and aborts the whole
+    order, not just the current SKU line."""
     lines = []
     for i in range(num_skus):
         print(f"\n-- SKU {i + 1} of {num_skus} --")
-        sku = input("SKU: ").strip()
-        quantity = int(input(f"Quantity of '{sku}' sold: ").strip())
-        item_price = float(input(f"Listing item price for '{sku}': $").strip())
+        sku = _input("SKU: ")
+        quantity = int(_input(f"Quantity of '{sku}' sold: "))
+        item_price = float(_input(f"Listing item price for '{sku}': $"))
         lines.append({'sku': sku, 'quantity': quantity, 'item_price': item_price})
     return lines
 
@@ -244,6 +317,8 @@ def compute_sale_rows(order_info, sku_lines, inventory, recipes):
         rows.append({
             'date': order_info['date_str'],
             'order_number': order_info['order_number'],
+            'customer_name': order_info['customer_name'],
+            'customer_id': order_info['customer_id'],
             'sku': sku,
             'quantity': qty,
             'charm_cost': charm_cost,
@@ -273,8 +348,7 @@ def write_sales_csv_rows(rows, output_path):
     format: verbose date strings (auto-quoted by csv.writer because they
     contain a comma), ' $X.XX ' / ' $-   ' currency strings, '25%' style
     discount strings, and blank cells for fields this script doesn't
-    collect (customer name/ID, shipping label ID, ship/arrival dates,
-    transit days, notes).
+    collect (shipping label ID, ship/arrival dates, transit days, notes).
 
     This is a dedicated writer local to addSale.py rather than an
     addition to shopIO.py -- per this project's design, shopIO.py owns
@@ -298,8 +372,8 @@ def write_sales_csv_rows(rows, output_path):
                 r['order_number'],
                 r['sku'],
                 r['quantity'],
-                '',  # customer name -- not collected
-                '',  # customer ID -- not collected
+                r['customer_name'],
+                r['customer_id'],
                 _fmt_money(r['charm_cost']),
                 _fmt_money(r['finding_cost']),
                 _fmt_money(r['finding_pkg_cost']),
@@ -367,9 +441,15 @@ def main():
         return
 
     print(f"  \u2713 {len(inventory)} materials, {len(recipes)} recipes loaded")
+    print("  (Type 'quit', 'exit', or 'q' at any prompt below to bail out --")
+    print("   nothing is written until you confirm at the very end.)")
 
-    order_info = prompt_order_info()
-    sku_lines = prompt_sku_lines(order_info['num_skus'])
+    try:
+        order_info = prompt_order_info()
+        sku_lines = prompt_sku_lines(order_info['num_skus'])
+    except QuitRequested:
+        print("\nAborted -- nothing written.")
+        return
 
     rows, warnings = compute_sale_rows(order_info, sku_lines, inventory, recipes)
 
@@ -381,9 +461,9 @@ def main():
         print("Aborted -- nothing written.")
         return
 
-    output_path = input("Enter output path (or Enter for PyrrhicSilvaShopSales.csv): ").strip()
+    output_path = input("Enter output path (or Enter for TempNewSales.csv): ").strip()
     if not output_path:
-        output_path = 'PyrrhicSilvaShopSales.csv'
+        output_path = 'TempNewSales.csv'
 
     write_sales_csv_rows(rows, output_path)
     print(f"\n\u2713 Appended {len(rows)} row(s) to {output_path}")

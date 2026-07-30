@@ -20,8 +20,8 @@ That's only possible because countOrdersDayOfWeek.py, countOrdersSubMonths.py,
 checkNewFlags.py, recipeGen4B.py, and skuCostLookup.py already separate
 "compute" from "render" per their own GUI notes. This dispatcher is the
 first real consumer of that separation -- see the "KNOWN GAPS" section
-at the bottom for the one module that ISN'T actually ready yet, despite
-its docstring claiming it is.
+at the bottom for the any modules that AREN'T actually ready yet, even if
+its docstring claims it is.
 
 Two kinds of context:
   - ONE-SHOT  (auto_exit=True):  runs once, prints its report, returns
