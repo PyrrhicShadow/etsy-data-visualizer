@@ -34,6 +34,15 @@ INPUT CONVENTIONS:
     interactive loop convention. It does not apply to the final
     y/n confirmation or output-path prompt in main(), which already
     have their own abort path ("Aborted -- nothing written.").
+  - Integer fields (number of unique SKUs, quantity per SKU), numeric
+    fields (discount percent and every currency field), and the
+    Share & Save y/n prompt all loop via _prompt_int()/_prompt_float()/
+    _prompt_yes_no() until a valid value is entered -- same as
+    _prompt_order_number()'s existing loop for order numbers. Each of
+    these calls _input() first on every attempt, so the quit check
+    always happens before the field-specific format check, not after.
+    Share & Save now re-prompts on anything outside y/yes/true/n/no/false
+    instead of silently treating a typo as "no".
 
 FORMULAS (per Julien, confirmed against multiple historical rows,
 including a refund row with a negative quantity):
@@ -123,6 +132,50 @@ def _input(prompt):
     return value
 
 
+def _prompt_int(prompt):
+    """Loop on `prompt` until the input parses as an integer. Goes
+    through _input() first on every attempt, so 'quit'/'exit'/'q' still
+    aborts the order at any point -- the quit check always happens
+    before the int() parse is even attempted, never the other way
+    around."""
+    while True:
+        raw = _input(prompt)
+        try:
+            return int(raw)
+        except ValueError:
+            print(f"  \u274c '{raw}' isn't a whole number. Try again.")
+
+
+def _prompt_float(prompt):
+    """Loop on `prompt` until the input parses as a number (decimals
+    fine) -- used for every currency field and the discount percent
+    field. Same _input()-first ordering as _prompt_int()."""
+    while True:
+        raw = _input(prompt)
+        try:
+            return float(raw)
+        except ValueError:
+            print(f"  \u274c '{raw}' isn't a valid number. Try again.")
+
+
+YES_VALUES = ('y', 'yes', 'true')
+NO_VALUES = ('n', 'no', 'false')
+
+
+def _prompt_yes_no(prompt):
+    """Loop on `prompt` until the input is one of YES_VALUES or
+    NO_VALUES (case-insensitive), returning True/False. Replaces the old
+    silent-default behavior (anything not y/yes/true was treated as 'no',
+    including typos like 'yse') with an explicit re-prompt."""
+    while True:
+        raw = _input(prompt).lower()
+        if raw in YES_VALUES:
+            return True
+        if raw in NO_VALUES:
+            return False
+        print(f"  \u274c Please answer y/yes/true or n/no/false. Try again.")
+
+
 def prompt_date():
     """Prompt for a sale date in mm/dd/yyyy format, re-prompting on a
     bad/unparseable date instead of crashing (assumed to be a typo, not
@@ -203,21 +256,20 @@ def prompt_order_info():
     order_number = _prompt_order_number()
     customer_name = _input("Customer name: ")
     customer_id = _input("Customer ID: ")
-    num_skus = int(_input("Number of unique SKUs in this order: "))
-    discount_pct = float(_input("Discount percent applied at checkout (e.g. 25 for 25%, 0 for none): "))
+    num_skus = _prompt_int("Number of unique SKUs in this order: ")
+    discount_pct = _prompt_float("Discount percent applied at checkout (e.g. 25 for 25%, 0 for none): ")
 
-    share_save_input = _input("Was this a Share & Save order? (y/n): ").lower()
-    share_and_save = share_save_input in ('y', 'yes', 'true')
+    share_and_save = _prompt_yes_no("Was this a Share & Save order? (y/n): ")
     share_save_refund = 0.0
     if share_and_save:
-        share_save_refund = float(_input("Exact Share & Save refund dollar amount for this order: $"))
+        share_save_refund = _prompt_float("Exact Share & Save refund dollar amount for this order: $")
 
-    payment_amount = float(_input("Total order payment amount (customer): $"))
-    sales_tax = float(_input("Sales tax paid by customer: $"))
-    shipping_price = float(_input(
+    payment_amount = _prompt_float("Total order payment amount (customer): $")
+    sales_tax = _prompt_float("Sales tax paid by customer: $")
+    shipping_price = _prompt_float(
         "Shipping price (real label cost you paid if free shipping, "
         "or amount customer paid for shipping otherwise): $"
-    ))
+    )
 
     return {
         'date_str': date_str,
@@ -247,8 +299,8 @@ def prompt_sku_lines(num_skus):
     for i in range(num_skus):
         print(f"\n-- SKU {i + 1} of {num_skus} --")
         sku = _input("SKU: ")
-        quantity = int(_input(f"Quantity of '{sku}' sold: "))
-        item_price = float(_input(f"Listing item price for '{sku}': $"))
+        quantity = _prompt_int(f"Quantity of '{sku}' sold: ")
+        item_price = _prompt_float(f"Listing item price for '{sku}': $")
         lines.append({'sku': sku, 'quantity': quantity, 'item_price': item_price})
     return lines
 
