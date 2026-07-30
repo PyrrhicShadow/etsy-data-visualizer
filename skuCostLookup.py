@@ -14,6 +14,14 @@ which a GUI has no way to intercept. Those helpers now return warnings
 as a list, calculate_cost() collects them into result['warnings'], and
 format_output() (CLI-only) is the one place that turns everything,
 warnings included, into printable text.
+
+ADDED FOR addSale.py: calculate_envelope_cost() -- material 0900 is a
+per-ORDER packaging cost (one envelope per order, regardless of how many
+unique SKUs or units are in it), unlike every other packaging rule in
+this module, which is per-SKU-line. It's kept as its own small function
+rather than folded into calculate_packaging_cost() because that function
+resolves packaging through a RECIPE key ('ear-card', 'bag', etc.), while
+the envelope is a direct, fixed material lookup with no recipe involved.
 """
 
 from skuVocab import FINDINGS, FINDINGS_LEN, DEFAULT_PACKAGING, TART_INFO
@@ -37,6 +45,8 @@ SUFFIX_MULTIPLIERS = {
 
 NOT_IMPLEMENTED_CATEGORIES = {'BRAC', 'BRAC-E'}
 
+ENVELOPE_MATERIAL_ID = '0900'
+
 
 def calculate_material_cost(material_id, quantity, inventory):
     """Returns (cost, mat, warning). warning is None on success, or a
@@ -52,6 +62,24 @@ def calculate_material_cost(material_id, quantity, inventory):
 
     cost_per_unit = mat['price'] / divisor
     return cost_per_unit * quantity, mat, None
+
+
+def calculate_envelope_cost(inventory):
+    """Cost of ONE envelope (material 0900), charged once per ORDER
+    regardless of unique SKU count or quantities sold within that order --
+    this is the one packaging cost in the shop that is order-level rather
+    than line-level. Callers (e.g. addSale.py) should call this exactly
+    once per order and apply the result only to that order's first
+    written row, matching the existing sales CSV's convention for other
+    order-level fields (payment fee, transaction... no, shipping fee,
+    sales tax, payment amount).
+
+    Returns (cost, warning) -- same shape as calculate_material_cost()
+    minus the `mat` dict, since callers here don't need material details,
+    just the dollar amount and whether something went wrong.
+    """
+    cost, _mat, warning = calculate_material_cost(ENVELOPE_MATERIAL_ID, 1, inventory)
+    return cost, warning
 
 
 def calculate_chain_cost(length_inches, inventory):
