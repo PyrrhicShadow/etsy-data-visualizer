@@ -171,6 +171,22 @@ def _fmt_money(value):
         return f' $({abs(value):.2f})'
     return f' ${value:.2f} '
 
+def _prompt_order_number():
+    """Prompt for an order number and re-prompt until it's exactly 10
+    digits (no dashes, no letters) once leading/trailing whitespace is
+    stripped -- anything else is assumed to be a typo, not a new format,
+    so it loops rather than accepting it. On success, reformats the 10
+    digits into the XXXX-XXX-XXX dash convention already used throughout
+    PyrrhicSilvaShopSales.csv (e.g. '3658417504' -> '3658-417-504'),
+    since every existing row uses that shape and a bare 10-digit string
+    would silently break anything keying off order number later
+    (duplicate-date detection, order grouping in the trends generator,
+    etc.)."""
+    while True:
+        raw = _input("Order number (10 digits, no dashes): ")
+        if raw.isdigit() and len(raw) == 10:
+            return f"{raw[0:4]}-{raw[4:7]}-{raw[7:10]}"
+        print("  \u274c Order number must be exactly 10 digits, no dashes or letters. Try again.")
 
 def prompt_order_info():
     """Collect the per-order fields (asked once per order). Returns a
@@ -184,7 +200,7 @@ def prompt_order_info():
     """
     print("\n--- Order details ---")
     date_str = prompt_date()
-    order_number = _input("Order number: ")
+    order_number = _prompt_order_number()
     customer_name = _input("Customer name: ")
     customer_id = _input("Customer ID: ")
     num_skus = int(_input("Number of unique SKUs in this order: "))
