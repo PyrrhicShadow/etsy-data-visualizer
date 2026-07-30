@@ -12,20 +12,23 @@ Take manually sourced data and add it to Etsy's reports to create a single app t
 * Unified SKU library for syncronized changes to sales offerings 
     * Flags when Recipe data or Trends are missing new SKU types
 * Existing Inventory and Recipe data for listings can be validated and automated 
-* Sales file creator 
-    * would need to flag SKUs to be manually filled 
-    * alternatively, reverse-engineer SKUs from Etsy variation wording (still requires manual correction)
+* Sales file creator/appender 
 * Move towards one unified interactive CLI script leveraging other scripts instead of stand-alone-ish CLIs for every script
 
 ## Current reports 
 
 * Sales: breaks down each order by items purchased (by SKU), cost of materials, fees, earnings, and more! 
-    * Currently requires manual creation. See future features
+    * Currently only accepts new sales. See future features for more info.
 * Trends: aggrigates sales by date and shows buyer trends including hardware, flag or style, and more! 
-    * Can be automatically generated from a complete Sales file
+    * Can be automatically generated from a complete Sales file.
 
 ## Future features 
 
+* Sales file creator/appender 
+    * Accept special rows such as refunds, cancelations, or insurance payouts
+    * Import from Etsy financial reports, detect new sales, prompt user for SKU(s) of new sales
+* Ad spending CSV 
+* Implement bracelet & choker cost breakdown formula
 * GUI(?)
 
 ## Etsy fees 
@@ -41,3 +44,9 @@ Take manually sourced data and add it to Etsy's reports to create a single app t
     * specific historical orders have reshipment costs paid by me added here in addition to original shipping cost/fees
 * Share & Save: 4% of order total refunded to me
     * Etsy seasonally changes exact percentage of Share & Save refunded as a promotion so this field should ask for an exact number, not an automatic calculation
+
+## Sales CSV definitions
+    * Earnings: price after discount - (quantity * listing fee) - ( (sign of quantity) * payment fee) - ( (sign of quantity) * transaction fee) + Share & Save - ( (sign of quantity) * shipping fee) 
+    * Profit: earnings - (quantity * charm cost) - (quantity * finding cost) - (quantity * finding packaging cost) - envelope 
+    * Payment amount, shipping, and tax are only applied to the row of the first unique SKU of an order ID 
+        * no defined sorting for unique SKUs with the same order ID, first inputted first listed 
