@@ -153,6 +153,13 @@ def calculate_cost(sku, inventory, recipes):
         result['error'] = parsed['error']
         return result
 
+    if parsed.get('resolved_alias'):
+        orig = parsed['resolved_alias']['original']
+        canon = parsed['resolved_alias']['canonical']
+        result['warnings'].append(
+            f"'{orig}' is an alias; resolved to canonical design '{canon}'."
+        )
+
     category = parsed['category']
     length = parsed['length']
     base_sku = parsed['base_sku']

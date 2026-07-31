@@ -161,19 +161,35 @@ def parse_sku(sku_input):
     middle = sku_upper[len(matched_prefix):suffix_start_in_upper].strip('-')
     design = None
     unmatched_design_token = None
+    resolved_alias = None
     if middle:
         design_map = _design_map_for_prefix(matched_prefix)
         first_token = middle.split('-')[0]
         if design_map and first_token in design_map:
-            design = first_token
+            trend_col = design_map[first_token][1]
+            # Only a real alias if trend_col points at ANOTHER key in this
+            # same dict (DESIGNS' BI->BI3 pattern). KYO_COLORS/CC_COLORS/
+            # SEASON_NAMES/AETHER_ELEMENTS differ from their trend_col by
+            # formatting only (spreadsheet header casing/prefix), not by
+            # pointing at a second canonical code -- those must NOT be
+            # rewritten.
+            if trend_col and trend_col in design_map and trend_col.upper() != first_token.upper():
+                design = trend_col
+                resolved_alias = {'original': first_token, 'canonical': trend_col}
+            else:
+                design = first_token
         else:
             unmatched_design_token = first_token
+
+    if resolved_alias:
+        base_sku = f"{matched_prefix.lower()}-{resolved_alias['canonical'].lower()}"
 
     return {
         'sku': sku_original, 'error': None,
         'base_sku': base_sku, 'prefix': matched_prefix, 'design': design,
         'category': category, 'length': length, 'tart_n': None,
         'is_standalone': False, 'unmatched_design_token': unmatched_design_token,
+        'resolved_alias': resolved_alias,
     }
 
 
