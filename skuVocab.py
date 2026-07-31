@@ -53,14 +53,7 @@ STANDALONE_PREFIXES = {
 # ---------------------------------------------------------------------
 # DESIGNS -- pride flags & misc designs that can appear on bead-prefixed
 # items. code -> (description, trend column name)
-#
-# NOTE: 'MULTG' -> 'MULTIG' and 'MULTS' -> 'MULTIS' are NOT a typos. 
-# The SKU code sold on Etsy is occasionally mispelled MULTG/MULTS, but 
-# the trends CSV column is spelled MULTIG. Both scripts used to 
-# assume the column name equals the code, so this sale was silently
-# undercounted. Centralizing the mapping here fixes that for good.
-# Additionally, ACE, CETERO, BI, and TRANS are old aliases that resolve 
-# to their new proper name 
+# NOTE: see aliases in DESIGN_ALIASES
 # ---------------------------------------------------------------------
 DESIGNS = {
     'RAIN6':   ('6-stripe rainbow flag',                 'RAIN6'),
@@ -70,11 +63,9 @@ DESIGNS = {
     'PHILLY':  ('Philadelphia rainbow flag',             'PHILLY'),
     'LESBO5':  ('5-stripe lesbian flag',                 'LESBO5'),
     'GAY5':    ('5-stripe gay man flag',                 'GAY5'),
-    'BI':     ('bisexual (mini) flag',                   'BI3'), # old alias backup
     'BI3':     ('bisexual (mini) flag',                  'BI3'),
     'BI5':     ('bisexual (full) flag',                  'BI5'),
     'PAN':     ('pansexual flag',                        'PAN'),
-    'TRANS':  ('5-stripe transgender flag',              'TRANS5'), # old alias backup
     'TRANS3':  ('3-stripe transgender flag',             'TRANS3'),
     'TRANS5':  ('5-stripe transgender flag',             'TRANS5'),
     'GQUEER':  ('genderqueer flag',                      'GQUEER'),
@@ -83,11 +74,9 @@ DESIGNS = {
     'INTSEX':  ('intersex flag',                         'INTSEX'),
     'AROACE':  ('aroace flag',                           'AROACE'),
     'ORAROACE':  ('oriented aroace flag',                'ORAROACE'),
-    'ACE':    ('asexual flag',                           'ACE4'), # old alias backup
     'ACE4':    ('asexual flag',                          'ACE4'),
     'ACE6':    ('asexual (ace in grace) flag',           'ACE6'),
     'ARO':     ('aromantic flag',                        'ARO'),
-    'CETERO': ('ceterosexual flag',                      'CETERO4'), # old alias backup
     'CETERO4': ('ceterosexual flag',                     'CETERO4'),
     'CETERO5': ('ceterosexual (alt) flag',               'CETERO5'),
     'MAV':     ('maverique flag',                        'MAV'),
@@ -97,9 +86,7 @@ DESIGNS = {
     'GNEUT':   ('gender neutral flag',                   'GNEUT'),
     'TROIS':   ('neutrois flag',                         'TROIS'),
     'OMNIS':   ('omnisexual flag',                       'OMNIS'),
-    'MULTG':   ('multigender flag',                      'MULTIG'),  # see note above
     'MULTIG':   ('multigender flag',                     'MULTIG'),
-    'MULTS':   ('multisexual flag',                      'MULTIS'),  # see note above
     'MULTIS':   ('multisexual flag',                     'MULTIS'),
     'POLYG':   ('polygender flag',                       'POLYG'),
     'POLYS':   ('polysexual flag',                       'POLYS'),
@@ -115,6 +102,25 @@ DESIGNS = {
     'USA':     ('American flag',                         'USA'),
     'KRIS':    ('Kris/Chara shirt inspired',             'KRIS'),
     'FRISK':   ('Frisk shirt inspired',                  'FRISK'),
+}
+
+# ---------------------------------------------------------------------
+# DESIGN ALIASES -- aliases or misspellings of canonical DESIGNS
+# 'MULTG' -> 'MULTIG' and 'MULTS' -> 'MULTIS' are NOT a typos. 
+# The SKU code sold on Etsy is occasionally mispelled MULTG/MULTS, but 
+# the trends CSV column is spelled MULTIG. Both scripts used to 
+# assume the column name equals the code, so this sale was silently
+# undercounted. Centralizing the mapping here fixes that for good.
+# Additionally, ACE, CETERO, BI, and TRANS are old aliases that resolve 
+# to their new proper name 
+
+DESIGN_ALIASES = {
+    'BI':     ('bisexual (mini) flag',                   'BI3'), # old alias backup
+    'TRANS':  ('5-stripe transgender flag',              'TRANS5'), # old alias backup
+    'ACE':    ('asexual flag',                           'ACE4'), # old alias backup
+    'CETERO': ('ceterosexual flag',                      'CETERO4'), # old alias backup
+    'MULTG':   ('multigender flag',                      'MULTIG'),  # see note above
+    'MULTS':   ('multisexual flag',                      'MULTIS'),  # see note above
 }
 
 # ---------------------------------------------------------------------
