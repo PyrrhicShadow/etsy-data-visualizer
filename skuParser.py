@@ -17,7 +17,7 @@ only the pieces they need -- neither re-implements SKU parsing itself.
 
 import re
 from skuVocab import (
-    BEAD_PREFIXES, STANDALONE_PREFIXES, DESIGNS,
+    BEAD_PREFIXES, STANDALONE_PREFIXES, DESIGNS, DESIGN_ALIASES,
     SEASON_NAMES, AETHER_ELEMENTS, CC_COLORS, KYO_COLORS,
     FINDINGS, FINDINGS_LEN, TART_INFO,
 )
@@ -165,19 +165,14 @@ def parse_sku(sku_input):
     if middle:
         design_map = _design_map_for_prefix(matched_prefix)
         first_token = middle.split('-')[0]
+
         if design_map and first_token in design_map:
-            trend_col = design_map[first_token][1]
-            # Only a real alias if trend_col points at ANOTHER key in this
-            # same dict (DESIGNS' BI->BI3 pattern). KYO_COLORS/CC_COLORS/
-            # SEASON_NAMES/AETHER_ELEMENTS differ from their trend_col by
-            # formatting only (spreadsheet header casing/prefix), not by
-            # pointing at a second canonical code -- those must NOT be
-            # rewritten.
-            if trend_col and trend_col in design_map and trend_col.upper() != first_token.upper():
-                design = trend_col
-                resolved_alias = {'original': first_token, 'canonical': trend_col}
-            else:
-                design = first_token
+            design = first_token
+        elif design_map is DESIGNS and first_token in DESIGN_ALIASES:
+            # Old alias / known Etsy misspelling -- resolve to canonical.
+            trend_col = DESIGN_ALIASES[first_token][1]
+            design = trend_col
+            resolved_alias = {'original': first_token, 'canonical': trend_col}
         else:
             unmatched_design_token = first_token
 

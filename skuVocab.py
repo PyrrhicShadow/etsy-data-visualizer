@@ -279,10 +279,15 @@ TART_INFO = {
 # instead of re-deriving the same code.upper() == trend_column.upper()
 # check locally.
 # ---------------------------------------------------------------------
-def group_designs_by_trend_column(code_map):
+def group_designs_by_trend_column(code_map, alias_map=None):
     """Group a code -> (description, trend_column) dict by trend_column
     (the actual design/identity), since multiple codes can point at the
-    same one (e.g. BI/BI3 both -> BI3).
+    same one.
+
+    If alias_map is given (DESIGN_ALIASES is the only current case), its
+    codes are merged into the group of the canonical design they resolve
+    to, so e.g. 'BI' shows up as an alias of the 'BI3' group even though
+    'BI' is no longer a key in code_map itself.
 
     Returns dict trend_column -> {'codes': set of all codes for it,
     'canonical': the code where code == trend_column (or None if somehow
@@ -298,15 +303,33 @@ def group_designs_by_trend_column(code_map):
             group['description'] = desc
         elif group['description'] is None:
             group['description'] = desc
+
+    if alias_map:
+        for alias_code, (desc, trend_col) in alias_map.items():
+            group = groups.setdefault(trend_col, {'codes': set(), 'canonical': None, 'description': None})
+            group['codes'].add(alias_code)
+            if group['description'] is None:
+                group['description'] = desc
+
     return groups
 
 
-def flag_identity(code, code_map):
-    """Return the canonical grouping identity for a single code: the
-    trend_column if it's a known key in code_map (so aliases like 'BI'
-    and 'BI3' are recognized as the same design), or the raw code itself
-    if it isn't in code_map at all (nothing to canonicalize to yet).
+def flag_identity(code, code_map, alias_map=None):
+    """Return the canonical grouping identity for a single code.
+
+    Checks code_map first: if `code` is a key there, its own
+    trend_column is the identity.
+
+    If `code` isn't in code_map at all and alias_map is given, falls back
+    to alias_map -- a hit there resolves to ITS trend_column, so an alias
+    like 'BI' groups with the canonical 'BI3' design even though 'BI' is
+    not a code_map key anymore.
+
+    Falls back to the raw code if it's in neither -- nothing to
+    canonicalize to yet.
     """
     if code in code_map:
         return code_map[code][1]
+    if alias_map and code in alias_map:
+        return alias_map[code][1]
     return code

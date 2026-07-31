@@ -53,7 +53,7 @@ function that prints; a GUI calls run_checks() and builds its own view.
 """
 
 import csv
-from skuVocab import DESIGNS, group_designs_by_trend_column, flag_identity
+from skuVocab import DESIGNS, DESIGN_ALIASES, group_designs_by_trend_column, flag_identity
 from shopIO import load_recipes
 
 CONVERSION_PREFIXES = ('4B', '4C', '6P', '8R')  # matches recipeGen4B.py's translation targets
@@ -91,16 +91,9 @@ def extract_flags_by_prefix(skus, prefixes=CONVERSION_PREFIXES):
     return result, warnings
 
 
-def find_unused_designs(found_flags, designs):
-    """Return dict trend_column -> group info (codes/canonical/description)
-    for every design in skuVocab.DESIGNS that has NO 4b- recipe yet under
-    ANY of its known code spellings.
-
-    found_flags is the same dict extract_4b_flags() returns: flag_code
-    (already uppercase) -> list of source SKUs. Only the keys matter here.
-    """
+def find_unused_designs(found_flags, designs, aliases=None):
     found_set = set(found_flags.keys())
-    groups = group_designs_by_trend_column(designs)
+    groups = group_designs_by_trend_column(designs, aliases)
 
     unused = {}
     for trend_col, group in groups.items():
@@ -109,25 +102,11 @@ def find_unused_designs(found_flags, designs):
     return unused
 
 
-def check_conversion_completeness(flags_by_prefix, designs, prefixes=CONVERSION_PREFIXES):
-    """For every design that has a recipe under AT LEAST ONE of the given
-    bead-type prefixes, but NOT ALL of them, report which prefixes are
-    done and which are still missing.
-
-    Grouping is by flag_identity() rather than literal code, so a design
-    converted inconsistently (e.g. 4b-bi but 6p-bi3) is still recognized
-    as one design with 4B/6P done and 4C/8R missing -- not misread as two
-    unrelated half-finished conversions.
-
-    Returns dict identity -> {'present': {prefix: flag_code_used},
-    'missing': set of prefixes}. Designs with recipes under every prefix,
-    or under none of them, are excluded -- the former needs no action,
-    and the latter is find_unused_designs()'s job to report.
-    """
+def check_conversion_completeness(flags_by_prefix, designs, aliases=None, prefixes=CONVERSION_PREFIXES):
     by_identity = {}
     for p in prefixes:
         for flag in flags_by_prefix[p]:
-            identity = flag_identity(flag, designs)
+            identity = flag_identity(flag, designs, aliases)
             by_identity.setdefault(identity, {})[p] = flag
 
     incomplete = {}
@@ -152,43 +131,29 @@ def format_completeness_line(identity, info, prefixes=CONVERSION_PREFIXES):
     return f"  \u2022 {identity} - have: {have_str}   missing: {missing_str}"
 
 
-def classify_flags(found_flags, designs):
+def classify_flags(found_flags, designs, aliases=None):
     """Split found flag codes into three buckets:
-      - new: code isn't a DESIGNS key under any spelling
-      - non_canonical: code IS a DESIGNS key, but its trend_column differs
-        from the code itself (old alias or known misspelling)
-      - canonical: code is a DESIGNS key and matches its own trend_column
+      - new: code isn't a DESIGNS key AND isn't a DESIGN_ALIASES key
+      - non_canonical: code is a DESIGN_ALIASES key (old alias/misspelling
+        that resolves to a different canonical DESIGNS code)
+      - canonical: code is a DESIGNS key matching its own trend_column
     Returns three dicts, each flag_code -> list of source SKUs.
     """
     new, non_canonical, canonical = {}, {}, {}
+    aliases = aliases or {}
 
     for flag, skus in found_flags.items():
-        if flag not in designs:
-            new[flag] = skus
+        if flag in designs:
+            canonical[flag] = skus
+        elif flag in aliases:
+            non_canonical[flag] = skus
         else:
-            _desc, trend_col = designs[flag]
-            if trend_col.upper() == flag.upper():
-                canonical[flag] = skus
-            else:
-                non_canonical[flag] = skus
+            new[flag] = skus
 
     return new, non_canonical, canonical
 
 
-def run_checks(skus, designs=DESIGNS):
-    """Single compute entry point: runs all three checks against a list
-    of SKUs and returns one report dict, e.g.:
-
-        {
-          'counts_by_prefix': {'4B': 12, '4C': 12, '6P': 12, '8R': 12},
-          'warnings': [...],
-          'new': {...}, 'non_canonical': {...}, 'canonical': {...},
-          'unused_designs': {...},
-          'incomplete_conversions': {...},
-        }
-
-    No printing, no input -- this is what a GUI should call.
-    """
+def run_checks(skus, designs=DESIGNS, aliases=DESIGN_ALIASES):
     flags_by_prefix, warnings = extract_flags_by_prefix(skus)
 
     combined_flags = {}
@@ -196,7 +161,7 @@ def run_checks(skus, designs=DESIGNS):
         for flag, flag_skus in flags_by_prefix[p].items():
             combined_flags.setdefault(flag, []).extend(flag_skus)
 
-    new, non_canonical, canonical = classify_flags(combined_flags, designs)
+    new, non_canonical, canonical = classify_flags(combined_flags, designs, aliases)
 
     return {
         'counts_by_prefix': {p: len(flags_by_prefix[p]) for p in CONVERSION_PREFIXES},
@@ -204,12 +169,12 @@ def run_checks(skus, designs=DESIGNS):
         'new': new,
         'non_canonical': non_canonical,
         'canonical': canonical,
-        'unused_designs': find_unused_designs(flags_by_prefix['4B'], designs),
-        'incomplete_conversions': check_conversion_completeness(flags_by_prefix, designs),
+        'unused_designs': find_unused_designs(flags_by_prefix['4B'], designs, aliases),
+        'incomplete_conversions': check_conversion_completeness(flags_by_prefix, designs, aliases),
     }
 
 
-def render_report_cli(report, designs=DESIGNS):
+def render_report_cli(report, designs=DESIGNS, aliases=DESIGN_ALIASES):
     """CLI-only text renderer for run_checks()'s output. The only
     function in this module that prints anything."""
     counts_str = ', '.join(f"{p}={n}" for p, n in report['counts_by_prefix'].items())
@@ -237,7 +202,7 @@ def render_report_cli(report, designs=DESIGNS):
     if non_canonical:
         print(f"\n\u26a0\ufe0f  NON-CANONICAL - recognized, but not the canonical spelling ({len(non_canonical)}):")
         for flag in sorted(non_canonical):
-            _desc, trend_col = designs[flag]
+            _desc, trend_col = designs[flag] if flag in designs else aliases[flag]
             skus_str = ', '.join(non_canonical[flag])
             print(f"  \u2022 {flag} -> canonical is {trend_col}   (from: {skus_str})")
         print("\n  These will still work (skuVocab.py maps them), but consider")
