@@ -291,10 +291,20 @@ def ctx_add_sale(data):
             continue
 
         rows, warnings = addSale.compute_sale_rows(order_info, sku_lines, inventory, recipes)
+        verification = addSale.verify_payment_amount(rows, order_info)
+
         addSale.render_preview_cli(rows)
         addSale.render_warnings_cli(warnings)
+        addSale.render_verification_cli(verification)
+
+        if not verification['is_valid']:
+            proceed = input("\nMismatch found above. Write anyway? (y/n): ").strip().lower()
+            if proceed not in ('y', 'yes'):
+                print("Aborted -- nothing written. Re-run to re-enter the order.")
+                continue
 
         confirm = input("\nWrite these rows to the sales CSV? (y/n): ").strip().lower()
+        
         if confirm not in ('y', 'yes'):
             print("Not written. Order discarded.")
             continue

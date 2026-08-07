@@ -270,6 +270,9 @@ def prompt_order_info():
         "Shipping price (real label cost you paid if free shipping, "
         "or amount customer paid for shipping otherwise): $"
     )
+    customer_paid_shipping = _prompt_yes_no(
+        "Did the customer pay for shipping (vs. free shipping you covered)? (y/n): "
+    )
 
     return {
         'date_str': date_str,
@@ -283,6 +286,7 @@ def prompt_order_info():
         'payment_amount': payment_amount,
         'sales_tax': sales_tax,
         'shipping_price': shipping_price,
+        'customer_paid_shipping': customer_paid_shipping,
     }
 
 
@@ -410,6 +414,40 @@ def compute_sale_rows(order_info, sku_lines, inventory, recipes):
 
     return rows, warnings
 
+def verify_payment_amount(rows, order_info, tolerance=0.02):
+    """Pure check: sums price_after_discount across all SKU lines in this
+    order (quantity is already baked into that value -- see
+    compute_sale_rows(), no re-multiplying it here) plus sales tax, plus
+    shipping_price ONLY if the customer paid for it
+    (order_info['customer_paid_shipping']), and compares the result to
+    the order-level payment_amount the user entered.
+
+    This exists to catch INPUT typos (e.g. '123' for sales tax instead
+    of '1.23', or the wrong item price on one SKU line) -- it is NOT a
+    validator for historical/edited rows, which can legitimately have
+    partial refunds or manual overrides this won't account for.
+
+    Returns a dict, never printed here:
+        {'is_valid': bool, 'computed_total': float, 'expected': float,
+         'difference': float}
+    |difference| within `tolerance` (default 2 cents, to absorb per-line
+    round(..., 4) rounding across multiple SKU lines) counts as valid.
+    """
+    computed_total = sum(r['price_after_discount'] for r in rows)
+    computed_total += order_info['sales_tax']
+    if order_info.get('customer_paid_shipping'):
+        computed_total += order_info['shipping_price']
+    computed_total = round(computed_total, 4)
+
+    expected = order_info['payment_amount']
+    difference = round(computed_total - expected, 4)
+
+    return {
+        'is_valid': abs(difference) <= tolerance,
+        'computed_total': computed_total,
+        'expected': expected,
+        'difference': difference,
+    }
 
 def write_sales_csv_rows(rows, output_path):
     """Append (or create) rows in PyrrhicSilvaShopSales.csv's existing
@@ -476,6 +514,24 @@ def render_warnings_cli(warnings):
     for w in warnings:
         print(f"  - {w}")
 
+def render_verification_cli(verification):
+    """CLI-only renderer for verify_payment_amount()'s output."""
+    if verification['is_valid']:
+        print(
+            f"\n\u2713 Payment amount checks out (computed "
+            f"${verification['computed_total']:.2f} vs. entered "
+            f"${verification['expected']:.2f})."
+        )
+        return
+    print(
+        f"\n\u26a0\ufe0f  Payment amount mismatch: computed total is "
+        f"${verification['computed_total']:.2f} but you entered "
+        f"${verification['expected']:.2f} (difference: "
+        f"${verification['difference']:+.2f})."
+    )
+    print("   Likely a typo in sales tax, shipping price, an item price,")
+    print("   the discount percent, or payment amount itself.")
+
 
 def render_preview_cli(rows):
     print("\n" + "-" * 60)
@@ -520,9 +576,17 @@ def main():
         return
 
     rows, warnings = compute_sale_rows(order_info, sku_lines, inventory, recipes)
+    verification = verify_payment_amount(rows, order_info)
 
     render_preview_cli(rows)
     render_warnings_cli(warnings)
+    render_verification_cli(verification)
+
+    if not verification['is_valid']:
+        proceed = input("\nMismatch found above. Write anyway? (y/n): ").strip().lower()
+        if proceed not in ('y', 'yes'):
+            print("Aborted -- nothing written. Re-run to re-enter the order.")
+            return
 
     confirm = input("\nWrite these rows to the sales CSV? (y/n): ").strip().lower()
     if confirm not in ('y', 'yes'):
