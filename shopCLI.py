@@ -48,6 +48,7 @@ show you yesterday's data. Interactive contexts also expose a manual
 import sys
 
 from shopIO import load_inventory, load_recipes, load_valid_sales_rows
+from cliPrompts import QuitRequested, prompt_yes_no
 
 import checkNewFlags
 import recipeGen4B
@@ -154,8 +155,13 @@ def ctx_recipe_gen_4b(data):
         print("\n(No new recipes generated -- nothing to save.)")
         return
 
-    save = input("\nSave these to a file? [y/N]: ").strip().lower()
-    if save != 'y':
+    try:
+        save = prompt_yes_no("\nSave these to a file? (y/n): ")
+    except QuitRequested:
+        print("\nCancelled -- nothing saved.")
+        return
+
+    if not save:
         print("Not saved. Re-run this context after adding more 4B recipes to try again.")
         return
 
@@ -212,8 +218,13 @@ def ctx_sales_to_trends(data):
         print("\n" + "-" * 60)
         salesToTrendsGen.render_diffs_cli(report['diffs'])
 
-    save = input("\nSave generated trends to a file? [y/N]: ").strip().lower()
-    if save != 'y':
+    try:
+        save = prompt_yes_no("\nSave generated trends to a file? (y/n): ")
+    except QuitRequested:
+        print("\nCancelled -- nothing saved.")
+        return
+
+    if not save:
         return
     output_path = input("Output path (or Enter for TempTrendsGenerated.csv): ").strip()
     if not output_path:
@@ -297,15 +308,19 @@ def ctx_add_sale(data):
         addSale.render_warnings_cli(warnings)
         addSale.render_verification_cli(verification)
 
-        if not verification['is_valid']:
-            proceed = input("\nMismatch found above. Write anyway? (y/n): ").strip().lower()
-            if proceed not in ('y', 'yes'):
-                print("Aborted -- nothing written. Re-run to re-enter the order.")
-                continue
+        try:
+            if not verification['is_valid']:
+                proceed = prompt_yes_no("\nMismatch found above. Write anyway? (y/n): ")
+                if not proceed:
+                    print("Aborted -- nothing written. Re-run to re-enter the order.")
+                    continue
 
-        confirm = input("\nWrite these rows to the sales CSV? (y/n): ").strip().lower()
-        
-        if confirm not in ('y', 'yes'):
+            confirm = prompt_yes_no("\nWrite these rows to the sales CSV? (y/n): ")
+        except QuitRequested:
+            print("\nOrder aborted -- nothing written.")
+            continue
+
+        if not confirm:
             print("Not written. Order discarded.")
             continue
 

@@ -502,8 +502,19 @@ def main():
             print("Aborted -- nothing written. Re-run to re-enter the order.")
             return
 
-    confirm = input("\nWrite these rows to the sales CSV? (y/n): ").strip().lower()
-    if confirm not in ('y', 'yes'):
+    try:
+        if not verification['is_valid']:
+            proceed = prompt_yes_no("\nMismatch found above. Write anyway? (y/n): ")
+            if not proceed:
+                print("Aborted -- nothing written. Re-run to re-enter the order.")
+                return
+
+        confirm = prompt_yes_no("\nWrite these rows to the sales CSV? (y/n): ")
+    except QuitRequested:
+        print("\nAborted -- nothing written.")
+        return
+
+    if not confirm:
         print("Aborted -- nothing written.")
         return
 
