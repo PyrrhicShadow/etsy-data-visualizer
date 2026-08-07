@@ -60,6 +60,33 @@ import salesToTrendsGen
 import addSale
 
 
+MENU_COMMANDS = ('menu', 'exit', 'quit', 'q')
+
+
+class ReturnToMenu(Exception):
+    """Raised by prompt_loop_input() when the user types a menu-return
+    command (MENU_COMMANDS) inside one of shopCLI's interactive
+    sub-loops. Distinct from cliPrompts.QuitRequested, which aborts a
+    single in-progress order/entry -- this unwinds the whole sub-loop
+    back to the main dispatcher menu instead. Single consumer (this
+    file, three call sites) -- if a second script ever needs the same
+    idiom, promote it to cliPrompts.py then, not before."""
+    pass
+
+
+def prompt_loop_input(prompt):
+    """input() wrapper for shopCLI's interactive sub-loops (SKU Cost
+    Lookup, SKU Parser, Add Sale). Raises ReturnToMenu on any of
+    MENU_COMMANDS instead of making every call site hand-check the same
+    tuple. Returns the raw, stripped (but NOT lowercased) value
+    otherwise -- callers still own their own '' / 'reload' handling,
+    since that differs per context (ctx_add_sale folds its reload check
+    into a differently-worded prompt than the other two)."""
+    value = input(prompt).strip()
+    if value.lower() in MENU_COMMANDS:
+        raise ReturnToMenu()
+    return value
+
 # ---------------------------------------------------------------------
 # Shared, lazily-loaded CSV data
 # ---------------------------------------------------------------------
@@ -244,8 +271,9 @@ def ctx_sku_cost_lookup(data):
 
     print("\nSKU Cost Lookup -- enter a SKU, 'reload' to re-read the CSVs, or 'menu'/'exit' to leave.")
     while True:
-        user_input = input("cost>>> ").strip()
-        if user_input.lower() in ('menu', 'exit', 'quit', 'q'):
+        try:
+            user_input = prompt_loop_input("cost>>> ")
+        except ReturnToMenu:
             return
         if not user_input:
             continue
@@ -254,7 +282,6 @@ def ctx_sku_cost_lookup(data):
             recipes = data.recipes(force_reload=True)
             print("  \u2713 reloaded InventoryData.csv and RecipesData.csv")
             continue
-
         result = skuCostLookup.calculate_cost(user_input, inventory, recipes)
         print(skuCostLookup.format_output(result))
 
@@ -262,8 +289,9 @@ def ctx_sku_cost_lookup(data):
 def ctx_sku_parser(data):
     print("\nSKU Parser -- enter a SKU, or 'menu'/'exit' to leave. (No CSV data needed.)")
     while True:
-        user_input = input("parse>>> ").strip()
-        if user_input.lower() in ('menu', 'exit', 'quit', 'q'):
+        try:
+            user_input = prompt_loop_input("parse>>> ")
+        except ReturnToMenu:
             return
         if not user_input:
             continue
@@ -285,10 +313,14 @@ def ctx_add_sale(data):
     print("At the prompt BELOW, 'menu'/'exit'/'quit'/'q' leaves this context entirely.")
 
     while True:
-        start = input("\nPress Enter to start a new order ('reload' to re-read CSVs, 'menu' to leave): ").strip().lower()
-        if start in ('menu', 'exit', 'quit', 'q'):
+        try:
+            start = prompt_loop_input(
+                "\nPress Enter to start a new order "
+                "('reload' to re-read CSVs, 'menu' to leave): "
+            )
+        except ReturnToMenu:
             return
-        if start == 'reload':
+        if start.lower() == 'reload':
             inventory = data.inventory(force_reload=True)
             recipes = data.recipes(force_reload=True)
             print("  \u2713 reloaded InventoryData.csv and RecipesData.csv")
