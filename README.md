@@ -27,7 +27,10 @@ Take manually sourced data and add it to Etsy's reports to create a single app t
 * Sales file creator/appender 
     * Accept special rows such as refunds, cancelations, or insurance payouts
     * Import from Etsy financial reports, detect new sales, prompt user for SKU(s) of new sales
-* Ad spending CSV 
+* Show most popular items over a specified time period 
+    * ask for start/end dates
+    * specify count of unique SKU, broad SKU (group together earrings, necklaces, bracelets of both types, phone charms), flags (Pride only), filter out Pride flags, etc
+* Etsy Ads spending CSV import
 * Implement bracelet & choker cost breakdown formula
 * GUI(?)
 
@@ -46,7 +49,8 @@ Take manually sourced data and add it to Etsy's reports to create a single app t
     * Etsy seasonally changes exact percentage of Share & Save refunded as a promotion so this field should ask for an exact number, not an automatic calculation
 
 ## Sales CSV definitions
-    * Earnings: price after discount - (quantity * listing fee) - ( (sign of quantity) * payment fee) - ( (sign of quantity) * transaction fee) + Share & Save - ( (sign of quantity) * shipping fee) 
-    * Profit: earnings - (quantity * charm cost) - (quantity * finding cost) - (quantity * finding packaging cost) - envelope 
-    * Payment amount, shipping, and tax are only applied to the row of the first unique SKU of an order ID 
-        * no defined sorting for unique SKUs with the same order ID, first inputted first listed 
+
+* Earnings: price after discount - (quantity * listing fee) - ( (sign of quantity) * payment fee) - ( (sign of quantity) * transaction fee) + Share & Save - ( (sign of quantity) * shipping fee) 
+* Profit: earnings - (quantity * charm cost) - (quantity * finding cost) - (quantity * finding packaging cost) - envelope 
+* Payment amount, shipping, and tax are only applied to the row of the first unique SKU of an order ID 
+    * no defined sorting for unique SKUs with the same order ID, first inputted first listed 
