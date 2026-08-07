@@ -128,15 +128,10 @@ SHIPPING_FEE_RATE = 0.065
 
 def _fmt_money(value):
     """Format a numeric value to match the existing sales CSV's style:
-    ' $X.XX ' for nonzero values, '0' for exactly zero (this file's
-    own convention for a blank/inapplicable cost cell -- see e.g. envelope
-    cost on every non-first row of a multi-SKU order), '$(X.XX)' for
-    negatives (refund/cancel rows)."""
+    ' X.XX ' for nonzero values, '0' for exactly zero"""
     if abs(value) < 0.0001:
         return ' 0 '
-    if value < 0:
-        return f' $({abs(value):.2f})'
-    return f' ${value:.2f} '
+    return f' {value:.2f} '
 
 def _prompt_order_number():
     """Prompt for an order number and re-prompt until it's exactly 10

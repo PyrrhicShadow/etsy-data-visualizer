@@ -373,7 +373,7 @@ def write_trends_csv(days, output_path):
             out_row = []
             for col in TREND_COLUMNS:
                 if col == 'date':
-                    out_row.append(f"{day.strftime('%A, %B')} {day.day}, {day.year}")
+                    out_row.append(f"{day.month}/{day.day}/{day.year}")
                     continue
                 val = row.get(col, 0)
                 totals[col] += val
