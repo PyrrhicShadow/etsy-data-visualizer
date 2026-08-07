@@ -103,96 +103,10 @@ for the file-writing step.
 
 import csv
 import os
-from datetime import datetime
+from cliPrompts import QuitRequested, prompt_input, prompt_date, prompt_float, prompt_int, prompt_yes_no
 
 from shopIO import load_inventory, load_recipes
 from skuCostLookup import calculate_cost, calculate_envelope_cost
-
-
-class QuitRequested(Exception):
-    """Raised when the user types a quit command at any input() prompt
-    during order entry, so main() can abort cleanly -- no file writes,
-    no traceback -- the same way skuParser.py's and skuCostLookup.py's
-    interactive loops let you back out with 'quit'/'exit'/'q'."""
-    pass
-
-
-QUIT_COMMANDS = ('quit', 'exit', 'q')
-
-
-def _input(prompt):
-    """input() wrapper that raises QuitRequested if the user types a quit
-    command, instead of returning it as a normal value to be parsed as a
-    date/number/SKU. Every prompt in this module goes through this (or
-    prompt_date(), which builds on it) instead of calling input()
-    directly, so bailing out is possible at every step of order entry."""
-    value = input(prompt).strip()
-    if value.lower() in QUIT_COMMANDS:
-        raise QuitRequested()
-    return value
-
-
-def _prompt_int(prompt):
-    """Loop on `prompt` until the input parses as an integer. Goes
-    through _input() first on every attempt, so 'quit'/'exit'/'q' still
-    aborts the order at any point -- the quit check always happens
-    before the int() parse is even attempted, never the other way
-    around."""
-    while True:
-        raw = _input(prompt)
-        try:
-            return int(raw)
-        except ValueError:
-            print(f"  \u274c '{raw}' isn't a whole number. Try again.")
-
-
-def _prompt_float(prompt):
-    """Loop on `prompt` until the input parses as a number (decimals
-    fine) -- used for every currency field and the discount percent
-    field. Same _input()-first ordering as _prompt_int()."""
-    while True:
-        raw = _input(prompt)
-        try:
-            return float(raw)
-        except ValueError:
-            print(f"  \u274c '{raw}' isn't a valid number. Try again.")
-
-
-YES_VALUES = ('y', 'yes', 'true')
-NO_VALUES = ('n', 'no', 'false')
-
-
-def _prompt_yes_no(prompt):
-    """Loop on `prompt` until the input is one of YES_VALUES or
-    NO_VALUES (case-insensitive), returning True/False. Replaces the old
-    silent-default behavior (anything not y/yes/true was treated as 'no',
-    including typos like 'yse') with an explicit re-prompt."""
-    while True:
-        raw = _input(prompt).lower()
-        if raw in YES_VALUES:
-            return True
-        if raw in NO_VALUES:
-            return False
-        print(f"  \u274c Please answer y/yes/true or n/no/false. Try again.")
-
-
-def prompt_date():
-    """Prompt for a sale date in mm/dd/yyyy format, re-prompting on a
-    bad/unparseable date instead of crashing (assumed to be a typo, not
-    a quit request). Returns the date already converted to this
-    project's stored date-string format ('Tuesday, April 22, 2025'),
-    matching write_trends_csv()'s own day/month/year construction in
-    salesToTrendsGen.py rather than strftime('%d') (which zero-pads
-    single-digit days -- the existing sales CSV does not, e.g.
-    'May 4, 2025', not 'May 04, 2025')."""
-    while True:
-        raw = _input("Sale date (mm/dd/yyyy): ")
-        try:
-            date_obj = datetime.strptime(raw, "%m/%d/%Y")
-        except ValueError:
-            print(f"  Could not parse '{raw}' as mm/dd/yyyy -- please try again.")
-            continue
-        return f"{date_obj.strftime('%A, %B')} {date_obj.day}, {date_obj.year}"
 
 
 SALES_CSV_HEADER = [
@@ -236,7 +150,7 @@ def _prompt_order_number():
     (duplicate-date detection, order grouping in the trends generator,
     etc.)."""
     while True:
-        raw = _input("Order number (10 digits, no dashes): ")
+        raw = prompt_input("Order number (10 digits, no dashes): ")
         if raw.isdigit() and len(raw) == 10:
             return f"{raw[0:4]}-{raw[4:7]}-{raw[7:10]}"
         print("  \u274c Order number must be exactly 10 digits, no dashes or letters. Try again.")
@@ -254,23 +168,23 @@ def prompt_order_info():
     print("\n--- Order details ---")
     date_str = prompt_date()
     order_number = _prompt_order_number()
-    customer_name = _input("Customer name: ")
-    customer_id = _input("Customer ID: ")
-    num_skus = _prompt_int("Number of unique SKUs in this order: ")
-    discount_pct = _prompt_float("Discount percent applied at checkout (e.g. 25 for 25%, 0 for none): ")
+    customer_name = prompt_input("Customer name: ")
+    customer_id = prompt_input("Customer ID: ")
+    num_skus = prompt_int("Number of unique SKUs in this order: ")
+    discount_pct = prompt_float("Discount percent applied at checkout (e.g. 25 for 25%, 0 for none): ")
 
-    share_and_save = _prompt_yes_no("Was this a Share & Save order? (y/n): ")
+    share_and_save = prompt_yes_no("Was this a Share & Save order? (y/n): ")
     share_save_refund = 0.0
     if share_and_save:
-        share_save_refund = _prompt_float("Exact Share & Save refund dollar amount for this order: $")
+        share_save_refund = prompt_float("Exact Share & Save refund dollar amount for this order: $")
 
-    payment_amount = _prompt_float("Total order payment amount (customer): $")
-    sales_tax = _prompt_float("Sales tax paid by customer: $")
-    shipping_price = _prompt_float(
+    payment_amount = prompt_float("Total order payment amount (customer): $")
+    sales_tax = prompt_float("Sales tax paid by customer: $")
+    shipping_price = prompt_float(
         "Shipping price (real label cost you paid if free shipping, "
         "or amount customer paid for shipping otherwise): $"
     )
-    customer_paid_shipping = _prompt_yes_no(
+    customer_paid_shipping = prompt_yes_no(
         "Did the customer pay for shipping (vs. free shipping you covered)? (y/n): "
     )
 
@@ -302,9 +216,9 @@ def prompt_sku_lines(num_skus):
     lines = []
     for i in range(num_skus):
         print(f"\n-- SKU {i + 1} of {num_skus} --")
-        sku = _input("SKU: ")
-        quantity = _prompt_int(f"Quantity of '{sku}' sold: ")
-        item_price = _prompt_float(f"Listing item price for '{sku}': $")
+        sku = prompt_input("SKU: ")
+        quantity = prompt_int(f"Quantity of '{sku}' sold: ")
+        item_price = prompt_float(f"Listing item price for '{sku}': $")
         lines.append({'sku': sku, 'quantity': quantity, 'item_price': item_price})
     return lines
 
