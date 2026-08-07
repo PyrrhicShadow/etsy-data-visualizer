@@ -103,11 +103,10 @@ def prompt_yes_no(prompt):
 def prompt_date(prompt="Sale date (mm/dd/yyyy): "):
     """Prompt for a date in mm/dd/yyyy format, re-prompting on a
     bad/unparseable date instead of crashing (assumed to be a typo, not
-    a quit request). Returns the date already converted to this
-    project's stored date-string format ('Tuesday, April 22, 2025'),
-    matching salesToTrendsGen.write_trends_csv()'s own day/month/year
-    construction (day is NOT zero-padded -- 'May 4, 2025', not
-    'May 04, 2025').
+    a quit request). Returns the date converted to Excel's expected
+    date-string format ('8/12/2025'), matching day/month/year
+    construction for import into master XLSX (day/month is NOT 
+    zero-padded -- '5/4/2025', not '05/04/2025').
 
     `prompt` is overridable since not every future caller is necessarily
     asking about a "sale" date specifically, even though every current
@@ -120,4 +119,4 @@ def prompt_date(prompt="Sale date (mm/dd/yyyy): "):
         except ValueError:
             print(f"  Could not parse '{raw}' as mm/dd/yyyy -- please try again.")
             continue
-        return f"{date_obj.strftime('%A, %B')} {date_obj.day}, {date_obj.year}"
+        return f"{date_obj.month}/{date_obj.day}/{date_obj.year}"

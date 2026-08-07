@@ -128,12 +128,12 @@ SHIPPING_FEE_RATE = 0.065
 
 def _fmt_money(value):
     """Format a numeric value to match the existing sales CSV's style:
-    ' $X.XX ' for nonzero values, ' $-   ' for exactly zero (this file's
+    ' $X.XX ' for nonzero values, '0' for exactly zero (this file's
     own convention for a blank/inapplicable cost cell -- see e.g. envelope
     cost on every non-first row of a multi-SKU order), '$(X.XX)' for
     negatives (refund/cancel rows)."""
     if abs(value) < 0.0001:
-        return ' $-   '
+        return ' 0 '
     if value < 0:
         return f' $({abs(value):.2f})'
     return f' ${value:.2f} '
@@ -142,17 +142,13 @@ def _prompt_order_number():
     """Prompt for an order number and re-prompt until it's exactly 10
     digits (no dashes, no letters) once leading/trailing whitespace is
     stripped -- anything else is assumed to be a typo, not a new format,
-    so it loops rather than accepting it. On success, reformats the 10
-    digits into the XXXX-XXX-XXX dash convention already used throughout
-    PyrrhicSilvaShopSales.csv (e.g. '3658417504' -> '3658-417-504'),
-    since every existing row uses that shape and a bare 10-digit string
-    would silently break anything keying off order number later
-    (duplicate-date detection, order grouping in the trends generator,
-    etc.)."""
+    so it loops rather than accepting it. Does not reformat into the 
+    exisiting XXXX-XXX-XXX format for ease of import from temp CSV to 
+    the master XLXS."""
     while True:
         raw = prompt_input("Order number (10 digits, no dashes): ")
         if raw.isdigit() and len(raw) == 10:
-            return f"{raw[0:4]}-{raw[4:7]}-{raw[7:10]}"
+            return raw
         print("  \u274c Order number must be exactly 10 digits, no dashes or letters. Try again.")
 
 def prompt_order_info():
@@ -252,6 +248,7 @@ def compute_sale_rows(order_info, sku_lines, inventory, recipes):
         item_price = line['item_price']
 
         price_after_discount = round(qty * item_price * discount_mult, 4)
+
         # Transaction fee is stored UNSIGNED -- confirmed against a
         # historical refund row where price_after_discount was negative
         # but the stored transaction fee cell was still positive.
@@ -365,10 +362,9 @@ def verify_payment_amount(rows, order_info, tolerance=0.02):
 
 def write_sales_csv_rows(rows, output_path):
     """Append (or create) rows in PyrrhicSilvaShopSales.csv's existing
-    format: verbose date strings (auto-quoted by csv.writer because they
-    contain a comma), ' $X.XX ' / ' $-   ' currency strings, '25%' style
-    discount strings, and blank cells for fields this script doesn't
-    collect (shipping label ID, ship/arrival dates, transit days, notes).
+    format: ' $X.XX ' / '25%' style discount strings, and blank cells 
+    for fields this script doesn't collect (shipping label ID, ship / 
+    arrival dates, transit days, notes).
 
     This is a dedicated writer local to addSale.py rather than an
     addition to shopIO.py -- per this project's design, shopIO.py owns
