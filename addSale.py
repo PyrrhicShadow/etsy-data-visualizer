@@ -496,12 +496,6 @@ def main():
     render_warnings_cli(warnings)
     render_verification_cli(verification)
 
-    if not verification['is_valid']:
-        proceed = input("\nMismatch found above. Write anyway? (y/n): ").strip().lower()
-        if proceed not in ('y', 'yes'):
-            print("Aborted -- nothing written. Re-run to re-enter the order.")
-            return
-
     try:
         if not verification['is_valid']:
             proceed = prompt_yes_no("\nMismatch found above. Write anyway? (y/n): ")

@@ -27,6 +27,7 @@ the envelope is a direct, fixed material lookup with no recipe involved.
 from skuVocab import FINDINGS, FINDINGS_LEN, DEFAULT_PACKAGING, TART_INFO
 from skuParser import parse_sku
 from shopIO import load_inventory, load_recipes
+from cliPrompts import prompt_input, QuitRequested
 import difflib
 
 PACKAGING_RULES = {
@@ -392,12 +393,11 @@ def main():
     print("\nEnter a SKU (or 'quit' to exit):\n")
 
     while True:
-        user_input = input(">>> ").strip()
-
-        if user_input.lower() in ['quit', 'exit', 'q']:
+        try:
+            user_input = prompt_input(">>> ")
+        except QuitRequested:
             print("\nGoodbye!\n")
             break
-
         if not user_input:
             continue
 

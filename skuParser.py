@@ -21,6 +21,7 @@ from skuVocab import (
     SEASON_NAMES, AETHER_ELEMENTS, CC_COLORS, KYO_COLORS,
     FINDINGS, FINDINGS_LEN, TART_INFO,
 )
+from cliPrompts import prompt_input, QuitRequested
 
 # ---------------------------------------------------------------------
 # Prefix matching: longest-first so no prefix can accidentally be a
@@ -290,8 +291,9 @@ def main():
     print("\nEnter a SKU (or 'quit' to exit):\n")
 
     while True:
-        user_input = input(">>> ").strip()
-        if user_input.lower() in ['quit', 'exit', 'q']:
+        try:
+            user_input = prompt_input(">>> ")
+        except QuitRequested:
             print("\nGoodbye!\n")
             break
         if not user_input:
