@@ -56,6 +56,7 @@ import skuParser
 import countOrdersDayOfWeek
 import countOrdersSubMonths
 import salesToTrendsGen
+import addSale
 
 
 # ---------------------------------------------------------------------
@@ -262,6 +263,47 @@ def ctx_sku_parser(data):
         else:
             print(f"\u2705 {skuParser.readable_description(parsed)}")
 
+def ctx_add_sale(data):
+    inventory = _safe_load('InventoryData.csv', lambda: data.inventory(force_reload=True))
+    recipes = _safe_load('RecipesData.csv', lambda: data.recipes(force_reload=True))
+    if inventory is None or recipes is None:
+        return
+
+    print("\nAdd Sale -- enter orders one at a time.")
+    print("At any prompt DURING an order, 'quit'/'exit'/'q' aborts just that order (nothing written).")
+    print("At the prompt BELOW, 'menu'/'exit'/'quit'/'q' leaves this context entirely.")
+
+    while True:
+        start = input("\nPress Enter to start a new order ('reload' to re-read CSVs, 'menu' to leave): ").strip().lower()
+        if start in ('menu', 'exit', 'quit', 'q'):
+            return
+        if start == 'reload':
+            inventory = data.inventory(force_reload=True)
+            recipes = data.recipes(force_reload=True)
+            print("  \u2713 reloaded InventoryData.csv and RecipesData.csv")
+            continue
+
+        try:
+            order_info = addSale.prompt_order_info()
+            sku_lines = addSale.prompt_sku_lines(order_info['num_skus'])
+        except addSale.QuitRequested:
+            print("\nOrder aborted -- nothing written.")
+            continue
+
+        rows, warnings = addSale.compute_sale_rows(order_info, sku_lines, inventory, recipes)
+        addSale.render_preview_cli(rows)
+        addSale.render_warnings_cli(warnings)
+
+        confirm = input("\nWrite these rows to the sales CSV? (y/n): ").strip().lower()
+        if confirm not in ('y', 'yes'):
+            print("Not written. Order discarded.")
+            continue
+
+        output_path = input("Output path (or Enter for TempNewSales.csv): ").strip()
+        if not output_path:
+            output_path = 'TempNewSales.csv'
+        addSale.write_sales_csv_rows(rows, output_path)
+        print(f"\n\u2713 Appended {len(rows)} row(s) to {output_path}")
 
 # ---------------------------------------------------------------------
 # Menu registry: (key, label, run_fn, auto_exit)
@@ -271,9 +313,10 @@ CONTEXTS = [
     ('2', 'SKU Cost Lookup        (interactive)',                      ctx_sku_cost_lookup, False),
     ('3', 'Check New Flags        (recipe vs. skuVocab audit)',        ctx_check_new_flags, True),
     ('4', 'Recipe Gen 4B          (generate 4C/6P/8R from 4B)',        ctx_recipe_gen_4b,   True),
-    ('5', 'Sales -> Trends Generator (vs. reference file, if present)', ctx_sales_to_trends, True),
-    ('6', 'Orders by Day of Week',                                     ctx_day_of_week,     True),
-    ('7', 'Orders by Month Third',                                     ctx_sub_months,      True),
+    ('5', 'Add Sale               (interactive, one order at a time)', ctx_add_sale,        False),
+    ('6', 'Sales -> Trends Generator (vs. reference file, if present)', ctx_sales_to_trends, True),
+    ('7', 'Orders by Day of Week',                                     ctx_day_of_week,     True),
+    ('8', 'Orders by Month Third',                                     ctx_sub_months,      True),
 ]
 
 
