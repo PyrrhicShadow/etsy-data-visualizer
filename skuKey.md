@@ -1,11 +1,13 @@
-== Bead styles == 
+## Bead styles
+
 4B - 4mm bicone beads 
 4C - 4mm cube beads 
 6P - 6mm pearl beads 
 8R - 8mm round beads 
 CHD - children's bracelet kit beads
 
-== Pride flags == 
+## Pride flags 
+
 RAIN6 - 6-stripe rainbow 
 RAIN7 - 7-stripe rainbow 
 RAIN8 - 8-stripe rainbow 
@@ -49,7 +51,8 @@ ANDRO - androsexual
 GYNE - gynesexual
 QUEER - queer
 
-== Jewelry findings/types == 
+# Jewelry findings/types 
+
 LV - leverback earrings 
 WR - French wire earrings 
 BP - 4mm ball post stud earrings 
@@ -59,14 +62,18 @@ BRAC[n] - n-inch long chain bracelet or choker
 BRAC-e[n] - n-inch long elastic bracelet
 CH - phone charm
 
-== Misc jewelry == 
+# Misc jewelry 
+
 HOWLS - Howl's moving castle jewelry 
 TART-[1|2] - Tartaglia cosplay earrings, single or pair
 AETHER[none|all|anemo|geo|electro|dendro|hydro|pyro|cryo] - Single Aether cosplay earring of an element
-KRIS - Kris & Chara Dreemurr's shirt inspired earrings 
-FRISK - Frisk's shirt inspired earrings
 KYO-[RED|BLACK] - Kyo Soma's bracelet inspired earrings 
 SEASONS-[winter|spring|summer|fall] - Seasons cottage-core earrings 
-USA - American flag jewelry 
 CC-[flag or color] - candy cane with a color pattern (RW - red & white, RWG - red, white, green) or a pride flag from above
 10-13-STAR - a pair of shooting-star earrings 
+
+# Misc styles 
+
+KRIS - Kris & Chara Dreemurr's shirt inspired earrings 
+FRISK - Frisk's shirt inspired earrings
+USA - American flag jewelry 

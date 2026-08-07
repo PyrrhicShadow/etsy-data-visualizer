@@ -245,19 +245,20 @@ def ctx_sales_to_trends(data):
         print("\n" + "-" * 60)
         salesToTrendsGen.render_diffs_cli(report['diffs'])
 
-    try:
-        save = prompt_yes_no("\nSave generated trends to a file? (y/n): ")
-    except QuitRequested:
-        print("\nCancelled -- nothing saved.")
-        return
+    if len(report['diffs']) > 0: 
+        try:
+            save = prompt_yes_no("\nSave generated trends to a file? (y/n): ")
+        except QuitRequested:
+            print("\nCancelled -- nothing saved.")
+            return
 
-    if not save:
-        return
-    output_path = input("Output path (or Enter for TempTrendsGenerated.csv): ").strip()
-    if not output_path:
-        output_path = 'TempTrendsGenerated.csv'
-    salesToTrendsGen.write_trends_csv(report['days'], output_path)
-    print(f"\n\u2713 Saved to {output_path}")
+        if not save:
+            return
+        output_path = input("Output path (or Enter for TempTrendsGenerated.csv): ").strip()
+        if not output_path:
+            output_path = 'TempTrendsGenerated.csv'
+        salesToTrendsGen.write_trends_csv(report['days'], output_path)
+        print(f"\n\u2713 Saved to {output_path}")
 
 
 # ---------------------------------------------------------------------

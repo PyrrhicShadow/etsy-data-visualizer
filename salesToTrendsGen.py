@@ -43,9 +43,6 @@ skuKey.txt and skuParser.py, then checked against the sample trends file):
     carrying that design, regardless of bead style or finding. 
   - AETHER / SEASONS / CC (Candy-Cane): each also fills a second, more
     specific column (element, season, or color pattern).
-  - TART: NOT a simple item count. The sample file stores the number
-    encoded in the SKU itself (TART-1 -> 1, TART-2 -> 2, i.e. single vs.
-    pair), multiplied by quantity - not the count of orders.
   - USA, KRIS, HOWLS, KYO-Red, KYO-Black, "10-13-STAR": direct name/SKU
     matches, no further sub-columns.
 
@@ -78,6 +75,7 @@ import csv
 import os
 from collections import defaultdict
 from datetime import datetime
+from cliPrompts import QuitRequested, prompt_yes_no
 
 # ---------------------------------------------------------------------
 # STEP 1: Trend sheet's exact column order (copied from the sample file)
@@ -295,7 +293,7 @@ def build_day_rows(order_items, order_date):
             row['items sold'] += qty
 
             if parsed['kind'] == 'tart':
-                row['TART'] += parsed['tart_n'] * qty
+                row['TART'] += qty
                 continue
 
             if parsed['kind'] == 'ten_thirteen_star':
@@ -581,25 +579,28 @@ def main():
         for w in report['warnings']:
             print(f"  - {w}")
 
-    print(f"\nLooking for reference file at {reference_path} ...")
+    print(f"\nLooking for reference file at {sales_path} ...")
 
     if report['reference_days'] is None:
-        print("  (not found - skipping comparison)")
+        print(f"\n  (no reference file found at '{sales_path}' -- skipping comparison)")
+    else:
+        print(f"\n  \u2713 compared against {len(report['reference_days'])} dated rows in '{sales_path}'")
+        print("\n" + "-" * 60)
+        render_diffs_cli(report['diffs'])
 
-        output_path = input("Enter output path (or Enter for TempTrendsGenerated.csv): ").strip()
-        if not output_path:
-            output_path = 'TempTrendsGenerated.csv'
+    if len(report['diffs']) > 0: 
+        try:
+            save = prompt_yes_no("\nSave generated trends to a file? (y/n): ")
+        except QuitRequested:
+            print("\nCancelled -- nothing saved.")
+            return
 
-        write_trends_csv(report['days'], output_path)
-        print(f"\n\u2713 Saved to {output_path}")
-        return
-
-    print(f"  \u2713 loaded {len(report['reference_days'])} dated rows from reference file")
-
-    print("\n" + "=" * 60)
-    print("DISCREPANCIES vs PyrrhicSilvaShopTrends.csv")
-    print("=" * 60 + "\n")
-    render_diffs_cli(report['diffs'])
+        if save:
+            output_path = input("Output path (or Enter for TempTrendsGenerated.csv): ").strip()
+            if not output_path:
+                output_path = 'TempTrendsGenerated.csv'
+            write_trends_csv(report['days'], output_path)
+            print(f"\n\u2713 Saved to {output_path}")
 
 
 if __name__ == '__main__':
