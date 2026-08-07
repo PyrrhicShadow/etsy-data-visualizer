@@ -128,6 +128,7 @@ def parse_sku(sku_input):
             'base_sku': 'tart', 'prefix': None, 'design': None,
             'category': 'TART', 'length': None, 'tart_n': int(m.group(1)),
             'is_standalone': False, 'unmatched_design_token': None,
+            'canonical_sku': sku_original,
         }
 
     # -- bead-style or standalone prefix --
@@ -179,12 +180,36 @@ def parse_sku(sku_input):
     if resolved_alias:
         base_sku = f"{matched_prefix.lower()}-{resolved_alias['canonical'].lower()}"
 
+    # -- canonical_sku: the writeable, alias-resolved SKU string. Only
+    # differs from sku_original when resolved_alias fired. Splices the
+    # canonical token in by INDEX (not str.replace), using the exact
+    # position first_token occupies in sku_upper -- matched_prefix always
+    # matched at position 0, and a dash always follows it whenever
+    # `middle` is non-empty (see the `_ALL_PREFIXES` matching loop above),
+    # so first_token starts at len(matched_prefix) + 1. This guarantees
+    # we replace ONLY the design token, never a coincidental substring
+    # match elsewhere in the SKU (e.g. a suffix that happens to contain
+    # the same letters). Prefix/suffix casing exactly as the user typed
+    # it is preserved; only the token itself is swapped in, using the
+    # canonical dict's own casing (uppercase, matching every other
+    # canonical code in skuVocab.py).
+    canonical_sku = sku_original
+    if resolved_alias:
+        token_start = len(matched_prefix) + 1
+        token_end = token_start + len(first_token)
+        canonical_sku = (
+            sku_original[:token_start]
+            + resolved_alias['canonical']
+            + sku_original[token_end:]
+        )
+
     return {
         'sku': sku_original, 'error': None,
         'base_sku': base_sku, 'prefix': matched_prefix, 'design': design,
         'category': category, 'length': length, 'tart_n': None,
         'is_standalone': False, 'unmatched_design_token': unmatched_design_token,
         'resolved_alias': resolved_alias,
+        'canonical_sku': canonical_sku,
     }
 
 

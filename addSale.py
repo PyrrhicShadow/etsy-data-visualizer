@@ -387,7 +387,7 @@ def compute_sale_rows(order_info, sku_lines, inventory, recipes):
             'order_number': order_info['order_number'],
             'customer_name': order_info['customer_name'],
             'customer_id': order_info['customer_id'],
-            'sku': sku,
+            'sku': cost_result.get('canonical_sku', sku),
             'quantity': qty,
             'charm_cost': charm_cost,
             'finding_cost': finding_cost,

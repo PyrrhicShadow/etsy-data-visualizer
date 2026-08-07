@@ -143,7 +143,7 @@ def calculate_cost(sku, inventory, recipes):
     sku_original = sku.strip()
 
     result = {
-        'sku': sku_original, 'category': None, 'length': None,
+        'sku': sku_original, 'canonical_sku': sku_original, 'category': None, 'length': None,
         'charm_cost': 0.0, 'finding_cost': 0.0, 'combined_finding_cost': 0.0,
         'packaging_cost': 0.0, 'total_cost': 0.0, 'breakdown': [], 'warnings': [],
     }
@@ -152,6 +152,8 @@ def calculate_cost(sku, inventory, recipes):
     if parsed.get('error'):
         result['error'] = parsed['error']
         return result
+
+    result['canonical_sku'] = parsed.get('canonical_sku', sku_original)
 
     if parsed.get('resolved_alias'):
         orig = parsed['resolved_alias']['original']
