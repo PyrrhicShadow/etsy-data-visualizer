@@ -73,6 +73,7 @@ own.
 
 import csv
 import os
+import shopFormatting
 from collections import defaultdict
 from datetime import datetime
 from cliPrompts import QuitRequested, prompt_yes_no
@@ -330,7 +331,7 @@ def build_day_rows(order_items, order_date):
                 else:
                     warnings.append(
                         f"Design '{parsed['flag']}' has no trends column yet "
-                        f"(order dated {day:%A, %B %d, %Y}); counted in 'items sold' and "
+                        f"(order dated {shopFormatting.dateFormatUI(day)}); counted in 'items sold' and "
                         f"'{prefix}' only."
                     )
 
@@ -373,7 +374,7 @@ def write_trends_csv(days, output_path):
             out_row = []
             for col in TREND_COLUMNS:
                 if col == 'date':
-                    out_row.append(f"{day.month}/{day.day}/{day.year}")
+                    out_row.append(f"{shopFormatting.dateFormatCSV(day)}")
                     continue
                 val = row.get(col, 0)
                 totals[col] += val
@@ -469,7 +470,7 @@ def compute_trend_diffs(generated_days, reference_days):
     diffs_report = []
 
     for day in all_dates:
-        label = f"{day.strftime('%A, %B')} {day.day}, {day.year}"
+        label = f"{shopFormatting.dateFormatUI(day)}"
         mine = generated_days.get(day)
         theirs = reference_days.get(day)
 

@@ -103,8 +103,9 @@ for the file-writing step.
 
 import csv
 import os
-from cliPrompts import QuitRequested, prompt_input, prompt_date, prompt_float, prompt_int, prompt_yes_no
+import shopFormatting
 
+from cliPrompts import QuitRequested, prompt_input, prompt_date, prompt_float, prompt_int, prompt_yes_no
 from shopIO import load_inventory, load_recipes
 from skuCostLookup import calculate_cost, calculate_envelope_cost
 
@@ -125,13 +126,6 @@ PAYMENT_PROCESSING_FIXED = 0.25
 TRANSACTION_FEE_RATE = 0.065
 SHIPPING_FEE_RATE = 0.065
 
-
-def _fmt_money(value):
-    """Format a numeric value to match the existing sales CSV's style:
-    ' X.XX ' for nonzero values, '0' for exactly zero"""
-    if abs(value) < 0.0001:
-        return ' 0 '
-    return f' {value:.2f} '
 
 def _prompt_order_number():
     """Prompt for an order number and re-prompt until it's exactly 10
@@ -157,7 +151,7 @@ def prompt_order_info():
     order entry -- no partial order is ever written.
     """
     print("\n--- Order details ---")
-    date_str = prompt_date()
+    date_str = shopFormatting.dateFormatCSV(prompt_date())
     order_number = _prompt_order_number()
     customer_name = prompt_input("Customer name: ")
     customer_id = prompt_input("Customer ID: ")
@@ -385,23 +379,23 @@ def write_sales_csv_rows(rows, output_path):
                 r['quantity'],
                 r['customer_name'],
                 r['customer_id'],
-                _fmt_money(r['charm_cost']),
-                _fmt_money(r['finding_cost']),
-                _fmt_money(r['finding_pkg_cost']),
-                _fmt_money(r['envelope_cost']),
-                _fmt_money(r['item_price']),
+                shopFormatting.currencyFormatCSV(r['charm_cost']),
+                shopFormatting.currencyFormatCSV(r['finding_cost']),
+                shopFormatting.currencyFormatCSV(r['finding_pkg_cost']),
+                shopFormatting.currencyFormatCSV(r['envelope_cost']),
+                shopFormatting.currencyFormatCSV(r['item_price']),
                 discount_str,
-                _fmt_money(r['price_after_discount']),
-                _fmt_money(r['listing_fee']),
-                _fmt_money(r['payment_fee']),
-                _fmt_money(r['transaction_fee']),
-                _fmt_money(r['share_save_refund']),
-                _fmt_money(r['shipping_fee']),
-                _fmt_money(r['earnings']),
-                _fmt_money(r['profit']),
-                _fmt_money(r['payment_amount']),
-                _fmt_money(r['sales_tax']),
-                _fmt_money(r['shipping_price']),
+                shopFormatting.currencyFormatCSV(r['price_after_discount']),
+                shopFormatting.currencyFormatCSV(r['listing_fee']),
+                shopFormatting.currencyFormatCSV(r['payment_fee']),
+                shopFormatting.currencyFormatCSV(r['transaction_fee']),
+                shopFormatting.currencyFormatCSV(r['share_save_refund']),
+                shopFormatting.currencyFormatCSV(r['shipping_fee']),
+                shopFormatting.currencyFormatCSV(r['earnings']),
+                shopFormatting.currencyFormatCSV(r['profit']),
+                shopFormatting.currencyFormatCSV(r['payment_amount']),
+                shopFormatting.currencyFormatCSV(r['sales_tax']),
+                shopFormatting.currencyFormatCSV(r['shipping_price']),
                 '',  # shipping label ID -- not collected
                 '',  # ship date -- not collected
                 '',  # arrival date -- not collected
@@ -424,15 +418,15 @@ def render_verification_cli(verification):
     if verification['is_valid']:
         print(
             f"\n\u2713 Payment amount checks out (computed "
-            f"${verification['computed_total']:.2f} vs. entered "
-            f"${verification['expected']:.2f})."
+            f"{shopFormatting.currencyFormatUI(verification['computed_total'])} vs. entered "
+            f"{shopFormatting.currencyFormatUI(verification['expected'])})."
         )
         return
     print(
         f"\n\u26a0\ufe0f  Payment amount mismatch: computed total is "
-        f"${verification['computed_total']:.2f} but you entered "
-        f"${verification['expected']:.2f} (difference: "
-        f"${verification['difference']:+.2f})."
+        f"{shopFormatting.currencyFormatUI(verification['computed_total'])} but you entered "
+        f"{shopFormatting.currencyFormatUI(verification['expected'])} (difference: "
+        f"{shopFormatting.currencyFormatUI(verification['difference'])})."
     )
     print("   Likely a typo in sales tax, shipping price, an item price,")
     print("   the discount percent, or payment amount itself.")
@@ -445,7 +439,7 @@ def render_preview_cli(rows):
     for r in rows:
         print(
             f"  {r['sku']:<20} qty={r['quantity']:>3}  "
-            f"earnings=${r['earnings']:>7.2f}  profit=${r['profit']:>7.2f}"
+            f"earnings={shopFormatting.currencyFormatUI(r['earnings'])}  profit={shopFormatting.currencyFormatUI(r['profit'])}"
         )
     print("-" * 60)
 

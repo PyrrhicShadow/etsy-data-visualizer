@@ -119,4 +119,4 @@ def prompt_date(prompt="Sale date (mm/dd/yyyy): "):
         except ValueError:
             print(f"  Could not parse '{raw}' as mm/dd/yyyy -- please try again.")
             continue
-        return f"{date_obj.month}/{date_obj.day}/{date_obj.year}"
+        return date_obj
