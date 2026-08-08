@@ -29,6 +29,7 @@ from skuParser import parse_sku
 from shopIO import load_inventory, load_recipes
 from cliPrompts import prompt_input, QuitRequested
 import difflib
+import shopFormatting
 
 PACKAGING_RULES = {
     **{code: info['packaging'] for code, info in FINDINGS.items()},
@@ -341,11 +342,11 @@ def format_output(result):
         "=" * 60,
         f"SKU: {result['sku']}",
         "-" * 40,
-        f"Charm Cost:         ${result['charm_cost']:.4f}",
-        f"Finding/Chain Cost: ${result['combined_finding_cost']:.4f}",
-        f"Packaging Cost:     ${result['packaging_cost']:.4f}",
+        f"Charm Cost:         {shopFormatting.currencyFormatUI(result['charm_cost'])}",
+        f"Finding/Chain Cost: {shopFormatting.currencyFormatUI(result['combined_finding_cost'])}",
+        f"Packaging Cost:     {shopFormatting.currencyFormatUI(result['packaging_cost'])}",
         "-" * 40,
-        f"TOTAL COST:         ${result['total_cost']:.4f}",
+        f"TOTAL COST:         {shopFormatting.currencyFormatUI(result['total_cost'])}",
         "=" * 60,
         "",
         "Breakdown:",

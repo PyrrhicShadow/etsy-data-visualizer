@@ -12,7 +12,7 @@ render_report() at all.
 
 from collections import defaultdict
 from shopIO import load_valid_sales_rows
-
+import shopFormatting
 
 def compute_order_ranges(rows):
     """Categorize orders by which third of the month their earliest date
@@ -81,8 +81,8 @@ def render_report_cli(result):
     if duplicates:
         print(f"\n{len(duplicates)} order(s) had DIFFERENT dates (kept earliest):")
         for order_num, unique_dates in duplicates.items():
-            dates_str = [d.strftime('%Y-%m-%d') for d in unique_dates]
-            print(f"  \u2022 {order_num}: {dates_str} \u2192 kept {unique_dates[0].strftime('%Y-%m-%d')}")
+            dates_str = [shopFormatting.dateFormatCSV(d) for d in unique_dates]
+            print(f"  \u2022 {order_num}: {dates_str} \u2192 kept {shopFormatting.dateFormatCSV(unique_dates[0])}")
 
 
 def main():
