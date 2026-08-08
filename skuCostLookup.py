@@ -357,7 +357,7 @@ def format_output(result):
         label = item.get('material_label', item['material_id'])
         cost = item['cost']
         note = f"  [{item.get('note', '')}]" if item.get('note') else ""
-        lines.append(f"  \u2022 {label}: {qty_str} @ ${cost:.4f}{note}")
+        lines.append(f"  • {label}: {qty_str} @ {shopFormatting.currencyFormatUI(cost)}{note}")
 
     if result.get('warnings'):
         lines.append("")
