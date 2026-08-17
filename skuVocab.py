@@ -346,23 +346,23 @@ def flag_identity(code, code_map, alias_map=None):
         return alias_map[code][1]
     return code
 
-def resolve_design_identity(prefix, design, category=None):
-    """Resolve a parsed SKU's (prefix, design, category) into a design
-    identity for trend reporting, spanning PRIDE_DESIGNS, MISC_DESIGNS,
+def resolve_design_category(prefix, design, type=None):
+    """Resolve a parsed SKU's (prefix, design, type) into a design
+    category for trend reporting, spanning PRIDE_DESIGNS, MISC_DESIGNS,
     and STANDALONE_PREFIXES (plus their sub-variation dicts) uniformly.
 
     Inputs are the already-parsed primitives from skuParser.parse_sku()
     -- NOT a raw SKU string. This function must never import or call
     parse_sku() itself: skuParser.py imports skuVocab.py, so the reverse
-    import would be circular. category is needed (not just prefix)
-    because TART parses with prefix=None; category=='TART' is the only
+    import would be circular. type is needed (not just prefix)
+    because TART parses with prefix=None; type=='TART' is the only
     signal that carries.
 
     Returns (result, warning):
       result is None, warning is None  -- this SKU has no design axis at
         all (bare packaging/recipe keys, findings with no attached
         design). Expected, not an error.
-      result is None, warning is a str -- prefix/category indicated a
+      result is None, warning is a str -- prefix/type indicated a
         design SHOULD be present but `design` didn't resolve against any
         known vocab (new/misspelled flag, or a standalone sub-variation
         code not yet in skuVocab.py). Surface this the same way every
@@ -388,7 +388,7 @@ def resolve_design_identity(prefix, design, category=None):
     that migration is where a real 'kind' field belongs, adjacent to
     where 'jewelry_type' already lives on FINDINGS.
     """
-    if category == 'TART':
+    if type == 'TART':
         return {
             'identity': 'TART', 'coarse_identity': 'TART',
             'kind': 'misc', 'description': TART_INFO['trend_column'],

@@ -225,9 +225,6 @@ def parse_sku_row(sku_original):
     if parsed['category'] == 'TART':
         return {'kind': 'tart', 'tart_n': parsed['tart_n']}, None
 
-    if parsed.get('is_standalone'):
-        return {'kind': 'ten_thirteen_star'}, None
-
     warning = None
     if parsed.get('unmatched_design_token'):
         warning = (f"Design token '{parsed['unmatched_design_token']}' on SKU "
