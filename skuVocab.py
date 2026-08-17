@@ -373,9 +373,6 @@ def resolve_design_category(prefix, design, type=None):
          'kind': 'pride' | 'misc', 'description': str}
         coarse_identity == identity when there's no finer breakdown
         available (pride/misc designs, HOWLS, 10-13-STAR, TART).
-        coarse_identity is None ONLY for KYO, which per
-        STANDALONE_PREFIXES has no bare trend column -- only
-        KYO-Red/KYO-Black exist. That's correct, not a bug.
 
     OPTION A SCOPE NOTE: `kind` is presently a flat 'pride'/'misc' split
     derived from which dict the design was found in -- NOT the

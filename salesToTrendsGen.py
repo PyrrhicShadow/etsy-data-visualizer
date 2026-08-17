@@ -297,16 +297,14 @@ def build_day_rows(order_items, order_date):
                 row['TART'] += qty
                 continue
 
-            if parsed['kind'] == 'ten_thirteen_star':
-                row['10-13-STAR'] += qty
-                continue
-
             prefix = parsed['prefix']
 
             if prefix in BEAD_PREFIX_COLUMN:
                 row[BEAD_PREFIX_COLUMN[prefix]] += qty
             elif prefix == 'HOWLS':
                 row['HOWLS'] += qty
+            elif prefix == '10-13-STAR': 
+                row['10-13-STAR'] += qty
             elif prefix == 'AETHER':
                 row['AETHER'] += qty
                 if parsed['flag']:
