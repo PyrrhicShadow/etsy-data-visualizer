@@ -3,16 +3,16 @@
 checkNewFlags.py - Pyrrhic Silva Shop
 
 Scans RecipesData.csv for 4B/4C/6P/8R-[flag] entries and compares the
-flag codes against skuVocab.DESIGNS, across THREE checks:
+flag codes against skuVocab.PRIDE_DESIGNS, across THREE checks:
 
   1. Recipe -> vocab: flag codes used ANYWHERE in RecipesData.csv (any of
-     the four bead types) that aren't in skuVocab.DESIGNS at all (NEW),
-     or that are recognized only as a non-canonical alias/misspelling
+     the four bead types) that aren't in skuVocab.PRIDE_DESIGNS at all 
+     (NEW), or that are recognized only as a non-canonical alias/misspelling
      (e.g. 'BI' instead of 'BI3'). Run this BEFORE recipeGen4B.py when
      starting the "add new recipes" workflow, so you know up front
      whether skuVocab.py (and skuKey.txt) need a new entry.
 
-  2. Vocab -> master recipe: designs already in skuVocab.DESIGNS that
+  2. Vocab -> master recipe: designs already in skuVocab.PRIDE_DESIGNS that
      have no master 4B recipe yet under any of their known code
      spellings. This is the more common direction in practice, since
      skuVocab.py is where new designs tend to get added first. Not an
@@ -24,14 +24,14 @@ flag codes against skuVocab.DESIGNS, across THREE checks:
      the "where did I leave off converting" check.
 
 HOW "NEW" VS "NON-CANONICAL" IS DETERMINED:
-skuVocab.DESIGNS maps code -> (description, trend_column). For canonical
+skuVocab.PRIDE_DESIGNS maps code -> (description, trend_column). For canonical
 codes the trend_column equals the code itself (e.g. 'LESBO5' -> 'LESBO5').
 For old aliases and known Etsy misspellings, it doesn't (e.g. 'BI' ->
 'BI3', 'MULTG' -> 'MULTIG'). There's no separate "is this an alias" flag
 in the data -- only a source comment, which a script can't read reliably.
 So this script uses that code-vs-column mismatch as the structural signal
 for "non-canonical, but not necessarily new." Flags that don't appear as
-a DESIGNS key at all -- under any spelling -- are reported as genuinely
+a PRDIE_DESIGNS key at all -- under any spelling -- are reported as genuinely
 NEW.
 
 The same alias-awareness applies to the conversion-completeness check
@@ -53,7 +53,7 @@ function that prints; a GUI calls run_checks() and builds its own view.
 """
 
 import csv
-from skuVocab import PRIDE_DESIGNS, DESIGNS, PRIDE_ALIASES, group_designs_by_trend_column, flag_identity
+from skuVocab import PRIDE_DESIGNS, PRIDE_ALIASES, group_designs_by_trend_column, flag_identity
 from shopIO import load_recipes
 
 CONVERSION_PREFIXES = ('4B', '4C', '6P', '8R')  # matches recipeGen4B.py's translation targets
@@ -153,7 +153,7 @@ def classify_flags(found_flags, designs, aliases=None):
     return new, non_canonical, canonical
 
 
-def run_checks(skus, designs={PRIDE_DESIGNS | DESIGNS}, aliases=PRIDE_ALIASES):
+def run_checks(skus, designs=PRIDE_DESIGNS, aliases=PRIDE_ALIASES):
     flags_by_prefix, warnings = extract_flags_by_prefix(skus)
 
     combined_flags = {}
@@ -174,7 +174,7 @@ def run_checks(skus, designs={PRIDE_DESIGNS | DESIGNS}, aliases=PRIDE_ALIASES):
     }
 
 
-def render_report_cli(report, designs={PRIDE_DESIGNS | DESIGNS}, aliases=PRIDE_ALIASES):
+def render_report_cli(report, designs=PRIDE_DESIGNS, aliases=PRIDE_ALIASES):
     """CLI-only text renderer for run_checks()'s output. The only
     function in this module that prints anything."""
     counts_str = ', '.join(f"{p}={n}" for p, n in report['counts_by_prefix'].items())
@@ -189,11 +189,11 @@ def render_report_cli(report, designs={PRIDE_DESIGNS | DESIGNS}, aliases=PRIDE_A
 
     print("\n" + "-" * 60)
     if new:
-        print(f"\n\U0001F195 NEW - not in skuVocab.DESIGNS at all ({len(new)}):")
+        print(f"\n\U0001F195 NEW - not in skuVocab.PRIDE_DESIGNS at all ({len(new)}):")
         for flag in sorted(new):
             skus_str = ', '.join(new[flag])
             print(f"  \u2022 {flag}   (from: {skus_str})")
-        print("\n  Add these to skuVocab.py's DESIGNS dict (and skuKey.txt by hand)")
+        print("\n  Add these to skuVocab.py's PRIDE_DESIGNS dict (and skuKey.txt by hand)")
         print("  before running recipeGen4B.py, or the translated 6P/8R/4C recipes")
         print("  will pass the flag through unrecognized.")
     else:
