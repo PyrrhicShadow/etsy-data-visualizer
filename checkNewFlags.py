@@ -53,7 +53,7 @@ function that prints; a GUI calls run_checks() and builds its own view.
 """
 
 import csv
-from skuVocab import DESIGNS, DESIGN_ALIASES, group_designs_by_trend_column, flag_identity
+from skuVocab import PRIDE_DESIGNS, DESIGNS, PRIDE_ALIASES, group_designs_by_trend_column, flag_identity
 from shopIO import load_recipes
 
 CONVERSION_PREFIXES = ('4B', '4C', '6P', '8R')  # matches recipeGen4B.py's translation targets
@@ -153,7 +153,7 @@ def classify_flags(found_flags, designs, aliases=None):
     return new, non_canonical, canonical
 
 
-def run_checks(skus, designs=DESIGNS, aliases=DESIGN_ALIASES):
+def run_checks(skus, designs={PRIDE_DESIGNS | DESIGNS}, aliases=PRIDE_ALIASES):
     flags_by_prefix, warnings = extract_flags_by_prefix(skus)
 
     combined_flags = {}
@@ -174,7 +174,7 @@ def run_checks(skus, designs=DESIGNS, aliases=DESIGN_ALIASES):
     }
 
 
-def render_report_cli(report, designs=DESIGNS, aliases=DESIGN_ALIASES):
+def render_report_cli(report, designs={PRIDE_DESIGNS | DESIGNS}, aliases=PRIDE_ALIASES):
     """CLI-only text renderer for run_checks()'s output. The only
     function in this module that prints anything."""
     counts_str = ', '.join(f"{p}={n}" for p, n in report['counts_by_prefix'].items())

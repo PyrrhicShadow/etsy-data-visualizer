@@ -17,7 +17,7 @@ only the pieces they need -- neither re-implements SKU parsing itself.
 
 import re
 from skuVocab import (
-    BEAD_PREFIXES, STANDALONE_PREFIXES, DESIGNS, DESIGN_ALIASES,
+    BEAD_PREFIXES, STANDALONE_PREFIXES, PRIDE_DESIGNS, DESIGNS, PRIDE_ALIASES,
     SEASON_NAMES, AETHER_ELEMENTS, CC_COLORS, KYO_COLORS,
     FINDINGS, FINDINGS_LEN, TART_INFO,
 )
@@ -28,6 +28,9 @@ from cliPrompts import prompt_input, QuitRequested
 # substring-match of a longer one (none currently collide, but this is
 # free insurance).
 # ---------------------------------------------------------------------
+
+_ALL_DESIGNS = {PRIDE_DESIGNS | DESIGNS}
+
 _ALL_PREFIXES = sorted(set(BEAD_PREFIXES) | set(STANDALONE_PREFIXES),
                        key=len, reverse=True)
 
@@ -43,7 +46,7 @@ def _design_map_for_prefix(prefix):
     if prefix == 'KYO':
         return KYO_COLORS
     if prefix in BEAD_PREFIXES:
-        return DESIGNS
+        return PRIDE_DESIGNS
     return None
 
 
@@ -170,9 +173,9 @@ def parse_sku(sku_input):
 
         if design_map and first_token in design_map:
             design = first_token
-        elif design_map is DESIGNS and first_token in DESIGN_ALIASES:
+        elif design_map is _ALL_DESIGNS and first_token in PRIDE_ALIASES:
             # Old alias / known Etsy misspelling -- resolve to canonical.
-            trend_col = DESIGN_ALIASES[first_token][1]
+            trend_col = PRIDE_ALIASES[first_token][1]
             design = trend_col
             resolved_alias = {'original': first_token, 'canonical': trend_col}
         else:

@@ -110,7 +110,9 @@ TREND_COLUMNS = [
 import skuVocab as vocab
 
 BEAD_PREFIX_COLUMN = {code: col for code, (_desc, col) in vocab.BEAD_PREFIXES.items()}
-DESIGN_COLUMN = {code: col for code, (_desc, col) in vocab.DESIGNS.items()}
+DESIGN_COLUMN = {code: col for code, (_desc, col) in vocab.PRIDE_DESIGNS.items()}
+# append non-pride DESIGNS to DESIGN_COLUMN
+DESIGN_COLUMN = DESIGN_COLUMN.update({code: col for code, (_desc, col) in vocab.DESIGNS.items()})
 STANDALONE_COLUMN = {code: col for code, (_desc, col) in vocab.STANDALONE_PREFIXES.items()}
 AETHER_COLUMN = {code: col for code, (_desc, col) in vocab.AETHER_ELEMENTS.items()}
 SEASON_COLUMN = {code: col for code, (_desc, col) in vocab.SEASON_NAMES.items()}

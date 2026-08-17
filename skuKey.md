@@ -70,7 +70,7 @@ AETHER[none|all|anemo|geo|electro|dendro|hydro|pyro|cryo] - Single Aether cospla
 KYO-[RED|BLACK] - Kyo Soma's bracelet inspired earrings 
 SEASONS-[winter|spring|summer|fall] - Seasons cottage-core earrings 
 CC-[flag or color] - candy cane with a color pattern (RW - red & white, RWG - red, white, green) or a pride flag from above
-10-13-STAR - a pair of shooting-star earrings 
+10-13-STAR - a pair of shooting-star earrings (must come as BP, LV, or WR)
 
 # Misc styles 
 

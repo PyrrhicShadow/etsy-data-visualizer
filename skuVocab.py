@@ -55,7 +55,7 @@ STANDALONE_PREFIXES = {
 # items. code -> (description, trend column name)
 # NOTE: see aliases in DESIGN_ALIASES
 # ---------------------------------------------------------------------
-DESIGNS = {
+PRIDE_DESIGNS = {
     'RAIN6':   ('6-stripe rainbow flag',                 'RAIN6'),
     'RAIN7':   ('7-stripe rainbow flag',                 'RAIN7'),
     'RAIN8':   ('8-stripe rainbow flag',                 'RAIN8'),
@@ -99,13 +99,16 @@ DESIGNS = {
     'ANDRO':   ('androsexual flag',                      'ANDRO'),
     'GYNE':    ('gynesexual flag',                       'GYNE'),
     'QUEER':   ('queer flag',                            'QUEER'),
+}
+
+DESIGNS = {
     'USA':     ('American flag',                         'USA'),
     'KRIS':    ('Kris/Chara shirt inspired',             'KRIS'),
     'FRISK':   ('Frisk shirt inspired',                  'FRISK'),
 }
 
 # ---------------------------------------------------------------------
-# DESIGN ALIASES -- aliases or misspellings of canonical DESIGNS
+# PRIDE ALIASES -- aliases or misspellings of canonical PRIDE DESIGNS
 # 'MULTG' -> 'MULTIG' and 'MULTS' -> 'MULTIS' are NOT a typos. 
 # The SKU code sold on Etsy is occasionally mispelled MULTG/MULTS, but 
 # the trends CSV column is spelled MULTIG. Both scripts used to 
@@ -114,7 +117,7 @@ DESIGNS = {
 # Additionally, ACE, CETERO, BI, and TRANS are old aliases that resolve 
 # to their new proper name 
 
-DESIGN_ALIASES = {
+PRIDE_ALIASES = {
     'BI':     ('bisexual (mini) flag',                   'BI3'), # old alias backup
     'TRANS':  ('5-stripe transgender flag',              'TRANS5'), # old alias backup
     'ACE':    ('asexual flag',                           'ACE4'), # old alias backup
