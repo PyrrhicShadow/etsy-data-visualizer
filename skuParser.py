@@ -232,7 +232,7 @@ def _prefix_description(prefix):
 def _design_description(prefix, design_code):
     design_map = _design_map_for_prefix(prefix)
     if design_map and design_code in design_map:
-        return design_map[design_code][0]
+        return design_map[design_code]['desc']
     return design_code
 
 

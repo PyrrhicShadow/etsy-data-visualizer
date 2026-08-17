@@ -38,16 +38,39 @@ BEAD_PREFIXES = {
 
 # ---------------------------------------------------------------------
 # STANDALONE PREFIXES -- items that aren't bead-style based.
-# trend column is None where the design only shows up via a more specific
-# sub-column (e.g. KYO has no bare "KYO" column -- only KYO-Red/KYO-Black).
+# code: {'description', 'trend column', 'category'}
 # ---------------------------------------------------------------------
 STANDALONE_PREFIXES = {
-    'AETHER':  ('Aether',                           'AETHER'),
-    'CC':      ('Christmas candy cane',             'CC (Candy-Cane)'),
-    'HOWLS':   ("Howl's Moving Castle cosplay",     'HOWLS'),
-    'SEASONS': ('Seasons:',                         'SEASONS'),
-    'KYO':     ('Kyo Soma',                         'KYO'),
-    '10-13-STAR': ('twin shooting star chain',      '10-13-STAR'),
+    'AETHER': {
+        'desc': 'Aether', 
+        'trend_col': 'AETHER', 
+        'category': 'Cosplay'
+    },
+    'CC': {
+        'Christmas candy cane', 
+        'CC (Candy-Cane)', 
+        'Holiday'
+    },
+    'HOWLS': {
+        'desc': "Howl's Moving Castle cosplay", 
+        'trend_col': 'HOWLS', 
+        'category': 'Cosplay'
+    },
+    'SEASONS': {
+        'desc': 'Seasons:', 
+        'trend_col': 'SEASONS', 
+        'category': 'Cottagecore'
+    },
+    'KYO': {
+        'desc': 'Kyo Soma', 
+        'trend_col': 'KYO', 
+        'category': 'Cosplay'
+    },
+    '10-13-STAR': {
+        'desc': 'twin shooting star chain', 
+        'trend_col': '10-13-STAR', 
+        'category': 'Cottagecore'
+    },
 }
 
 # ---------------------------------------------------------------------
@@ -102,9 +125,21 @@ PRIDE_DESIGNS = {
 }
 
 MISC_DESIGNS = {
-    'USA':     ('American flag',                         'USA'),
-    'KRIS':    ('Kris/Chara shirt inspired',             'KRIS'),
-    'FRISK':   ('Frisk shirt inspired',                  'FRISK'),
+    'USA':     {
+        'desc': 'American flag', 
+        'trend_col': 'USA', 
+        'category': 'Holiday'
+    },
+    'KRIS':    {
+        'desc': 'Kris/Chara shirt inspired', 
+        'trend_col': 'KRIS', 
+        'category': 'Cosplay'
+    },
+    'FRISK':   {
+        'desc': 'Frisk shirt inspired', 
+        'trend_col': 'FRISK', 
+        'category': 'Cosplay'
+    },
 }
 
 # ---------------------------------------------------------------------
@@ -341,9 +376,9 @@ def flag_identity(code, code_map, alias_map=None):
     canonicalize to yet.
     """
     if code in code_map:
-        return code_map[code][1]
+        return code_map[code]['trend_col']
     if alias_map and code in alias_map:
-        return alias_map[code][1]
+        return alias_map[code]['trend_col']
     return code
 
 def resolve_design_category(prefix, design, type=None):
