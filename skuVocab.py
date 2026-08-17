@@ -46,7 +46,7 @@ STANDALONE_PREFIXES = {
     'CC':      ('Christmas candy cane',             'CC (Candy-Cane)'),
     'HOWLS':   ("Howl's Moving Castle cosplay",     'HOWLS'),
     'SEASONS': ('Seasons:',                         'SEASONS'),
-    'KYO':     ('Kyo Soma',                         None),
+    'KYO':     ('Kyo Soma',                         'KYO'),
     '10-13-STAR': ('twin shooting star chain',      '10-13-STAR'),
 }
 

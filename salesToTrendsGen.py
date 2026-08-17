@@ -93,7 +93,8 @@ TREND_COLUMNS = [
     'BERRI', 'ALMD', 'QPR', 'GAYBO', 'GFLUX', 'QUEER', 
     'USA', 'TART', 'HOWLS', '10-13-STAR',
     'SEASONS', 'spring', 'summer', 'fall', 'winter',
-    'CC (Candy-Cane)', 'RW', 'RWG', 'RG', 'KYO-Red', 'KYO-Black', 'KRIS', 'FRISK',
+    'CC (Candy-Cane)', 'RW', 'RWG', 'RG', 
+    'KYO', 'KYO-Red', 'KYO-Black', 'KRIS', 'FRISK',
     'AETHER', 'ANEMO', 'GEO', 'ELECTRO', 'DENDRO', 'HYDRO', 'PYRO', 'CRYO', 'NONE', 'ALL',
 ]
 
@@ -319,6 +320,7 @@ def build_day_rows(order_items, order_date):
                 if parsed['flag']:
                     row[CC_COLUMN[parsed['flag']]] += qty
             elif prefix == 'KYO':
+                row['KYO'] += qty
                 if parsed['flag']:
                     row[KYO_COLUMN[parsed['flag']]] += qty
 

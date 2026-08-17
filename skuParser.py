@@ -47,7 +47,7 @@ def _design_map_for_prefix(prefix):
     if prefix == 'KYO':
         return KYO_COLORS
     if prefix in BEAD_PREFIXES:
-        return PRIDE_DESIGNS
+        return _ALL_DESIGNS
     return None
 
 
