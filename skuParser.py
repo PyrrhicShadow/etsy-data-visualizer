@@ -29,7 +29,7 @@ from cliPrompts import prompt_input, QuitRequested
 # free insurance).
 # ---------------------------------------------------------------------
 
-_ALL_DESIGNS = PRIDE_DESIGNS
+_ALL_DESIGNS = dict(PRIDE_DESIGNS)
 _ALL_DESIGNS.update(MISC_DESIGNS)
 
 _ALL_PREFIXES = sorted(set(BEAD_PREFIXES) | set(STANDALONE_PREFIXES),

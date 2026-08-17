@@ -345,3 +345,110 @@ def flag_identity(code, code_map, alias_map=None):
     if alias_map and code in alias_map:
         return alias_map[code][1]
     return code
+
+def resolve_design_identity(prefix, design, category=None):
+    """Resolve a parsed SKU's (prefix, design, category) into a design
+    identity for trend reporting, spanning PRIDE_DESIGNS, MISC_DESIGNS,
+    and STANDALONE_PREFIXES (plus their sub-variation dicts) uniformly.
+
+    Inputs are the already-parsed primitives from skuParser.parse_sku()
+    -- NOT a raw SKU string. This function must never import or call
+    parse_sku() itself: skuParser.py imports skuVocab.py, so the reverse
+    import would be circular. category is needed (not just prefix)
+    because TART parses with prefix=None; category=='TART' is the only
+    signal that carries.
+
+    Returns (result, warning):
+      result is None, warning is None  -- this SKU has no design axis at
+        all (bare packaging/recipe keys, findings with no attached
+        design). Expected, not an error.
+      result is None, warning is a str -- prefix/category indicated a
+        design SHOULD be present but `design` didn't resolve against any
+        known vocab (new/misspelled flag, or a standalone sub-variation
+        code not yet in skuVocab.py). Surface this the same way every
+        other warning in this project gets surfaced -- it's a
+        checkNewFlags.py-shaped gap, not a crash.
+      result is a dict, warning is None -- resolved. Shape:
+        {'identity': str, 'coarse_identity': str or None,
+         'kind': 'pride' | 'misc', 'description': str}
+        coarse_identity == identity when there's no finer breakdown
+        available (pride/misc designs, HOWLS, 10-13-STAR, TART).
+        coarse_identity is None ONLY for KYO, which per
+        STANDALONE_PREFIXES has no bare trend column -- only
+        KYO-Red/KYO-Black exist. That's correct, not a bug.
+
+    OPTION A SCOPE NOTE: `kind` is presently a flat 'pride'/'misc' split
+    derived from which dict the design was found in -- NOT the
+    finer holiday/cosplay/fairycore taxonomy Julien wants eventually.
+    Every STANDALONE_PREFIXES-sourced identity (TART, HOWLS, 10-13-STAR,
+    AETHER/CC/KYO/SEASONS and their sub-variations) is 'misc' here,
+    undifferentiated. Revisit alongside the planned PRIDE_DESIGNS/
+    MISC_DESIGNS/STANDALONE_PREFIXES tuple-to-dict migration (Option B),
+    NOT by patching special cases into this function in the meantime --
+    that migration is where a real 'kind' field belongs, adjacent to
+    where 'jewelry_type' already lives on FINDINGS.
+    """
+    if category == 'TART':
+        return {
+            'identity': 'TART', 'coarse_identity': 'TART',
+            'kind': 'misc', 'description': TART_INFO['trend_column'],
+        }, None
+
+    if prefix in STANDALONE_PREFIXES:
+        coarse_desc, coarse_col = STANDALONE_PREFIXES[prefix]
+
+        if prefix in ('HOWLS', '10-13-STAR'):
+            return {
+                'identity': coarse_col, 'coarse_identity': coarse_col,
+                'kind': 'misc', 'description': coarse_desc,
+            }, None
+
+        sub_map = {
+            'AETHER': AETHER_ELEMENTS, 'SEASONS': SEASON_NAMES,
+            'CC': CC_COLORS, 'KYO': KYO_COLORS,
+        }.get(prefix)
+
+        if sub_map is None:
+            # A STANDALONE_PREFIXES entry with no sub-variation dict
+            # wired up here -- a real gap, not an expected shape.
+            return None, (
+                f"'{prefix}' is a STANDALONE_PREFIXES entry with no "
+                f"sub-variation lookup registered in resolve_design_identity()."
+            )
+
+        if design is None or design not in sub_map:
+            return None, (
+                f"'{prefix}' sub-variation '{design}' not found in its "
+                f"vocab dict -- may be new or misspelled."
+            )
+
+        fine_desc, fine_col = sub_map[design]
+        return {
+            'identity': fine_col, 'coarse_identity': coarse_col,
+            'kind': 'misc', 'description': fine_desc,
+        }, None
+
+    if prefix in BEAD_PREFIXES:
+        if design is None:
+            return None, None  # bead-prefixed item with no design token at all -- unusual but not this function's concern to flag; parse_sku already tracks unmatched_design_token separately.
+
+        if design in PRIDE_DESIGNS:
+            desc, col = PRIDE_DESIGNS[design]
+            return {
+                'identity': col, 'coarse_identity': col,
+                'kind': 'pride', 'description': desc,
+            }, None
+
+        if design in MISC_DESIGNS:
+            desc, col = MISC_DESIGNS[design]
+            return {
+                'identity': col, 'coarse_identity': col,
+                'kind': 'misc', 'description': desc,
+            }, None
+
+        return None, (
+            f"Design '{design}' not found in PRIDE_DESIGNS or "
+            f"MISC_DESIGNS -- may be new or misspelled."
+        )
+
+    return None, None
