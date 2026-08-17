@@ -101,7 +101,7 @@ PRIDE_DESIGNS = {
     'QUEER':   ('queer flag',                            'QUEER'),
 }
 
-DESIGNS = {
+MISC_DESIGNS = {
     'USA':     ('American flag',                         'USA'),
     'KRIS':    ('Kris/Chara shirt inspired',             'KRIS'),
     'FRISK':   ('Frisk shirt inspired',                  'FRISK'),
@@ -172,30 +172,35 @@ FINDINGS = {
         'trend_column': 'LV (lever back earrings)',
         'packaging': ('ear-card', 1),
         'charm_mult': 2, 'finding_mult': 2,
+        'jewelry_type': 'earrings',
     },
     'WR': {
         'description': 'French wire earring',
         'trend_column': 'WR (fish hook earrings)',
         'packaging': ('ear-card', 1),
         'charm_mult': 2, 'finding_mult': 2,
+        'jewelry_type': 'earrings',
     },
     'BP': {
         'description': '4mm ball post stud earring',
         'trend_column': 'BP (4mm ball post studs)',
         'packaging': ('ear-card', 1),
         'charm_mult': 2, 'finding_mult': 2,
+        'jewelry_type': 'earrings',
     },
     'DK': {
         'description': 'earring (Aether outfit standard)',
         'trend_column': None,  # intentionally no trends column
         'packaging': ('ear-card', 1),
         'charm_mult': 1, 'finding_mult': 1,
+        'jewelry_type': 'earrings',
     },
     'CH': {
         'description': 'phone charm',
         'trend_column': 'CH (phone charm)',
         'packaging': ('bag', 1),
         'charm_mult': 1, 'finding_mult': 1,
+        'jewelry_type': 'phone_charm',
     },
 }
 
@@ -226,6 +231,7 @@ FINDINGS_LEN = {
         },
         'charm_mult': 1,
         'finding_mult': 1,
+        'jewelry_type': 'necklace',
     },
     'BRAC': {
         'trend_column': 'BRAC (chain bracelets & chokers)',
@@ -234,6 +240,7 @@ FINDINGS_LEN = {
         'packaging': None,   # TODO: not yet standardized
         'charm_mult': None,
         'finding_mult': None,
+        'jewelry_type': 'bracelet',
     },
     'BRAC-E': {
         'trend_column': 'BRAC-e (elastic bracelets)',
@@ -242,6 +249,7 @@ FINDINGS_LEN = {
         'packaging': None,   # TODO: idea in progress, not finalized
         'charm_mult': None,
         'finding_mult': None,
+        'jewelry_type': 'bracelet',
     },
 }
 
@@ -257,7 +265,7 @@ FINDINGS_LEN = {
 DEFAULT_PACKAGING = ('bag', 1)
 
 # ---------------------------------------------------------------------
-# Non-finding structural item types, kept here mainly so their
+# Item types with an implicit finding, kept here mainly so their
 # descriptions/trend columns aren't ALSO re-typed in three places.
 # The parsing logic for these (regexes, single-vs-pair branching, length
 # math) stays in each script -- only the fixed strings live here.
@@ -267,6 +275,7 @@ TART_INFO = {
     'description_pair': 'Tartaglia cosplay earrings (pair)',
     'trend_column': 'TART',
     'packaging': ('ear-card', 1),
+    'jewelry_type': 'earrings',
 }
 
 

@@ -17,7 +17,7 @@ only the pieces they need -- neither re-implements SKU parsing itself.
 
 import re
 from skuVocab import (
-    BEAD_PREFIXES, STANDALONE_PREFIXES, PRIDE_DESIGNS, DESIGNS, PRIDE_ALIASES,
+    BEAD_PREFIXES, STANDALONE_PREFIXES, PRIDE_DESIGNS, MISC_DESIGNS, PRIDE_ALIASES,
     SEASON_NAMES, AETHER_ELEMENTS, CC_COLORS, KYO_COLORS,
     FINDINGS, FINDINGS_LEN, TART_INFO,
 )
@@ -30,7 +30,7 @@ from cliPrompts import prompt_input, QuitRequested
 # ---------------------------------------------------------------------
 
 _ALL_DESIGNS = PRIDE_DESIGNS
-_ALL_DESIGNS.update(DESIGNS)
+_ALL_DESIGNS.update(MISC_DESIGNS)
 
 _ALL_PREFIXES = sorted(set(BEAD_PREFIXES) | set(STANDALONE_PREFIXES),
                        key=len, reverse=True)
