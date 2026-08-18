@@ -199,7 +199,7 @@ FINDINGS = {
         'trend_column': 'CH (phone charm)',
         'packaging': ('bag', 1),
         'charm_mult': 1, 'finding_mult': 1,
-        'jewelry_type': 'phone_charm',
+        'jewelry_type': 'phone charm',
     },
 }
 
@@ -376,17 +376,6 @@ def resolve_design_category(prefix, design, type=None):
          'category': 'pride' | 'misc', 'description': str}
         coarse_identity == identity when there's no finer breakdown
         available (pride/misc designs, HOWLS, 10-13-STAR, TART).
-
-    OPTION A SCOPE NOTE: `category` is presently a flat 'pride'/'misc' split
-    derived from which dict the design was found in -- NOT the
-    finer holiday/cosplay/fairycore taxonomy Julien wants eventually.
-    Every STANDALONE_PREFIXES-sourced identity (TART, HOWLS, 10-13-STAR,
-    AETHER/CC/KYO/SEASONS and their sub-variations) is 'misc' here,
-    undifferentiated. Revisit alongside the planned PRIDE_DESIGNS/
-    MISC_DESIGNS/STANDALONE_PREFIXES tuple-to-dict migration (Option B),
-    NOT by patching special cases into this function in the meantime --
-    that migration is where a real 'kind' field belongs, adjacent to
-    where 'jewelry_type' already lives on FINDINGS.
     """
     if type == 'TART':
         return {
@@ -396,7 +385,6 @@ def resolve_design_category(prefix, design, type=None):
 
     if prefix in STANDALONE_PREFIXES:
         entry = STANDALONE_PREFIXES[prefix]
-        coarse_desc, coarse_col = entry['desc'], entry['trend_col']
 
         if prefix in ('HOWLS', '10-13-STAR'):
             return {
@@ -423,10 +411,9 @@ def resolve_design_category(prefix, design, type=None):
                 f"vocab dict -- may be new or misspelled."
             )
 
-        fine_desc, fine_col = sub_map[design]
         return {
-            'identity': fine_col, 'coarse_identity': coarse_col,
-            'kind': 'misc', 'description': fine_desc,
+            'identity': design, 'coarse_identity': entry['trend_col'],
+            'category': entry['category'], 'description': entry['desc'],
         }, None
 
     if prefix in BEAD_PREFIXES:
@@ -437,14 +424,14 @@ def resolve_design_category(prefix, design, type=None):
             entry = PRIDE_DESIGNS[design]
             return {
                 'identity': design, 'coarse_identity': entry['trend_col'],
-                'kind': entry['category'], 'description': entry['desc'],
+                'category': entry['category'], 'description': entry['desc'],
             }, None
 
         if design in MISC_DESIGNS:
             entry = MISC_DESIGNS[design]
             return {
                 'identity': design, 'coarse_identity': entry['trend_col'],
-                'kind': entry['category'], 'description': entry['desc'],
+                'category': entry['category'], 'description': entry['desc'],
             }, None
 
         return None, (

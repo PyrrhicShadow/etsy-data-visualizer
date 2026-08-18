@@ -17,16 +17,16 @@ raw sales line items and re-deriving everything through skuParser.py
 and skuVocab.py fixes both problems and is the only way to get the
 granularity this script was asked for.
 
-DESIGN CATEGORIZATION: uses skuVocab.resolve_design_category()'s `kind`
+DESIGN CATEGORIZATION: uses skuVocab.resolve_design_category()'s `category`
 field to split designs into groups, rather than a hardcoded
 Pride/non-Pride check. Today that field only ever returns 'pride' or
 'misc', so the CLI report shows exactly two sections ("Pride Flag
 Designs" and "Non-Pride Flag Designs"). If resolve_design_category() is
-ever extended to return additional kind values, they show up here
-automatically -- compute_design_report() groups by whatever kinds are
+ever extended to return additional category values, they show up here
+automatically -- compute_design_report() groups by whatever categories are
 actually present in the data, and render_report_cli() lumps every
-non-'pride' kind under one "Non-Pride Flag Designs" heading (with a
-sub-heading per kind if more than one shows up).
+non-'pride' category under one "Non-Pride Flag Designs" heading (with a
+sub-heading per category if more than one shows up).
 
 FINE VS. COARSE DESIGN GRANULARITY: AETHER, SEASONS, and CC each have a
 bare trend column (AETHER, SEASONS, CC (Candy-Cane)) plus more specific
@@ -69,13 +69,13 @@ from skuVocab import resolve_design_category, FINDINGS, TART_INFO
 # ---------------------------------------------------------------------
 # Which FINDINGS codes belong to which jewelry_type. Built from
 # skuVocab.FINDINGS at import time rather than hardcoded, so a future
-# finding type with jewelry_type='earrings' (or 'phone_charm') is picked
+# finding type with jewelry_type='earrings' (or 'phone charm') is picked
 # up here automatically with no changes to this file.
 # ---------------------------------------------------------------------
 _EARRING_FINDING_CODES = {code for code, info in FINDINGS.items()
                            if info['jewelry_type'] == 'earrings'}
 _PHONE_CHARM_FINDING_CODES = {code for code, info in FINDINGS.items()
-                               if info['jewelry_type'] == 'phone_charm'}
+                               if info['jewelry_type'] == 'phone charm'}
 
 
 def classify_jewelry(parsed):
@@ -84,12 +84,12 @@ def classify_jewelry(parsed):
     jewelry_subtype).
 
     jewelry_type mirrors skuVocab's own 'jewelry_type' field:
-        'earrings' | 'necklace' | 'bracelet' | 'phone_charm'
+        'earrings' | 'necklace' | 'bracelet' | 'phone charm'
     jewelry_subtype is the breakdown label WITHIN that jewelry_type:
         earrings    -> finding code (LV/WR/BP/DK) or 'TART'
         necklace    -> chain length (int, 0 = charm-on-bail-only)
         bracelet    -> 'BRAC' (chain) or 'BRAC-E' (elastic)
-        phone_charm -> finding code (CH)
+        phone charm -> finding code (CH)
 
     Returns (None, None) if the parsed item doesn't match any known
     jewelry_type -- this is a real gap worth a warning (see
@@ -102,7 +102,7 @@ def classify_jewelry(parsed):
     if finding in _EARRING_FINDING_CODES:
         return 'earrings', finding
     if finding in _PHONE_CHARM_FINDING_CODES:
-        return 'phone_charm', finding
+        return 'phone charm', finding
     if parsed.get('chain_length') is not None:
         return 'necklace', parsed['chain_length']
     if parsed.get('brace_type') == 'chain':
@@ -119,7 +119,7 @@ def build_line_item_records(rows):
 
     Returns (records, warnings). Each record:
         {'date', 'quantity', 'jewelry_type', 'jewelry_subtype',
-         'design_kind', 'design_identity', 'design_coarse_identity'}
+         'design_category', 'design_identity', 'design_coarse_identity'}
     Any field can be None if that record didn't resolve on that axis
     (jewelry classification and design classification are independent
     -- a record failing one doesn't exclude it from the other).
@@ -159,7 +159,7 @@ def build_line_item_records(rows):
             'quantity': r['quantity'],
             'jewelry_type': jewelry_type,
             'jewelry_subtype': jewelry_subtype,
-            'design_kind': design_info['kind'] if design_info else None,
+            'design_category': design_info['category'] if design_info else None,
             'design_identity': design_info['identity'] if design_info else None,
             'design_coarse_identity': design_info['coarse_identity'] if design_info else None,
         })
@@ -229,32 +229,30 @@ def compute_jewelry_type_report(records):
 
 
 def compute_design_report(records, fine_grained=False):
-    """Rank designs by kind (whatever kind values resolve_design_
+    """Rank designs by category (whatever category values resolve_design_
     category() actually produced -- see module docstring), most-to-
-    least popular within each kind.
+    least popular within each category.
 
     fine_grained=False groups by coarse_identity (e.g. bare 'AETHER'
     total across all elements); True groups by identity (e.g.
-    'AETHER-ANEMO' split out from 'AETHER-HYDRO'). KYO items fall back
-    to identity regardless of this flag, since KYO has no coarse
-    identity to group by (see module docstring). Pride designs are
+    'AETHER-ANEMO' split out from 'AETHER-HYDRO'). Pride designs are
     unaffected either way -- identity == coarse_identity for every
     PRIDE_DESIGNS entry, so the toggle is a no-op there.
 
-    Returns {kind: [(identity, total_qty), ...]}, one entry per kind
-    actually present in `records` -- not a hardcoded ('pride', 'misc')
-    tuple.
+    Returns {category: [(identity, total_qty), ...]}, one entry per 
+    category actually present in `records` -- not a hardcoded 
+    ('pride', 'misc') tuple.
     """
     key_field = 'design_identity' if fine_grained else 'design_coarse_identity'
 
     def key_fn(rec):
         return rec[key_field] if rec[key_field] is not None else rec['design_identity']
 
-    kinds_present = {rec['design_kind'] for rec in records if rec['design_kind'] is not None}
+    categories_present = {rec['design_category'] for rec in records if rec['design_category'] is not None}
 
     return {
-        kind: rank_by(records, key_fn=key_fn, filter_fn=lambda r, k=kind: r['design_kind'] == k)
-        for kind in sorted(kinds_present)
+        category: rank_by(records, key_fn=key_fn, filter_fn=lambda r, cat=category: r['design_category'] == cat)
+        for category in sorted(categories_present)
     }
 
 
@@ -318,19 +316,19 @@ def render_report_cli(report, top_n=None):
     _print_ranking(report['jewelry']['bracelets'], top_n)
 
     designs = report['designs']
-    if 'pride' in designs:
+    if 'Pride' in designs:
         print("\n=== PRIDE FLAG DESIGNS ===\n")
-        _print_ranking(designs['pride'], top_n)
+        _print_ranking(designs['Pride'], top_n)
 
-    non_pride_kinds = sorted(k for k in designs if k != 'pride')
-    if non_pride_kinds:
+    non_pride_categories = sorted(cat for cat in designs if cat != 'Pride')
+    if non_pride_categories:
         print("\n=== NON-PRIDE FLAG DESIGNS ===")
-        for kind in non_pride_kinds:
-            if len(non_pride_kinds) > 1:
-                print(f"\n-- {kind} --")
+        for category in non_pride_categories:
+            if len(non_pride_categories) > 1:
+                print(f"\n-- {category} --")
             else:
                 print()
-            _print_ranking(designs[kind], top_n)
+            _print_ranking(designs[category], top_n)
 
     if report['warnings']:
         print(f"\n\u26a0\ufe0f  {len(report['warnings'])} warning(s):")
@@ -361,7 +359,7 @@ def main():
     for w in load_warnings:
         print(f"Warning: {w}")
 
-    fine_raw = input("\nShow fine-grained AETHER/SEASONS/CC sub-designs? (y/N): ").strip().lower()
+    fine_raw = input("\nShow fine-grained AETHER/SEASONS/CC sub-designs? (y/n): ").strip().lower()
     fine_grained = fine_raw in ('y', 'yes')
 
     top_raw = input("How many top entries per ranking? (Enter for all): ").strip()
