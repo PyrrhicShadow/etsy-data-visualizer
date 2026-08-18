@@ -176,7 +176,7 @@ def parse_sku(sku_input):
             design = first_token
         elif design_map is _ALL_DESIGNS and first_token in PRIDE_ALIASES:
             # Old alias / known Etsy misspelling -- resolve to canonical.
-            trend_col = PRIDE_ALIASES[first_token][1]
+            trend_col = PRIDE_ALIASES[first_token]['trend_col']
             design = trend_col
             resolved_alias = {'original': first_token, 'canonical': trend_col}
         else:
@@ -225,7 +225,7 @@ def _prefix_description(prefix):
     if prefix in BEAD_PREFIXES:
         return BEAD_PREFIXES[prefix][0]
     if prefix in STANDALONE_PREFIXES:
-        return STANDALONE_PREFIXES[prefix][0]
+        return STANDALONE_PREFIXES[prefix]['desc']
     return prefix.lower() if prefix else ''
 
 

@@ -111,14 +111,14 @@ TREND_COLUMNS = [
 import skuVocab as vocab
 
 BEAD_PREFIX_COLUMN = {code: col for code, (_desc, col) in vocab.BEAD_PREFIXES.items()}
-DESIGN_COLUMN = {code: col for code, (_desc, col) in vocab.PRIDE_DESIGNS.items()}
-# append non-pride DESIGNS to DESIGN_COLUMN
-DESIGN_COLUMN.update({code: col for code, (_desc, col) in vocab.MISC_DESIGNS.items()})
-STANDALONE_COLUMN = {code: col for code, (_desc, col) in vocab.STANDALONE_PREFIXES.items()}
-AETHER_COLUMN = {code: col for code, (_desc, col) in vocab.AETHER_ELEMENTS.items()}
-SEASON_COLUMN = {code: col for code, (_desc, col) in vocab.SEASON_NAMES.items()}
-CC_COLUMN = {code: col for code, (_desc, col) in vocab.CC_COLORS.items()}
-KYO_COLUMN = {code: col for code, (_desc, col) in vocab.KYO_COLORS.items()}
+DESIGN_COLUMN = {code: entry['trend_col'] for code, entry in vocab.PRIDE_DESIGNS.items()}
+# append non-Pride DESIGNS to DESIGN_COLUMN 
+DESIGN_COLUMN.update({code: entry['trend_col'] for code, entry in vocab.MISC_DESIGNS.items()})
+STANDALONE_COLUMN = {code: entry['trend_col'] for code, entry in vocab.STANDALONE_PREFIXES.items()}
+AETHER_COLUMN = {code: entry['trend_col'] for code, entry in vocab.AETHER_ELEMENTS.items()}
+SEASON_COLUMN = {code: entry['trend_col'] for code, entry in vocab.SEASON_NAMES.items()}
+CC_COLUMN = {code: entry['trend_col'] for code, entry in vocab.CC_COLORS.items()}
+KYO_COLUMN = {code: entry['trend_col'] for code, entry in vocab.KYO_COLORS.items()}
 
 # ---------------------------------------------------------------------
 # VALIDATION -- call this against the live TREND_COLUMNS list so a typo

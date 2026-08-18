@@ -400,7 +400,7 @@ def main():
         choice = input("\nSelect an option: ").strip().lower()
 
         if choice in ('q', 'quit', 'exit'):
-            print("\nGoodbye!\n")
+            print("\nHave a nice day!\n")
             return
 
         if choice == 'p':

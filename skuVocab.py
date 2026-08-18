@@ -41,36 +41,12 @@ BEAD_PREFIXES = {
 # code: {'description', 'trend column', 'category'}
 # ---------------------------------------------------------------------
 STANDALONE_PREFIXES = {
-    'AETHER': {
-        'desc': 'Aether', 
-        'trend_col': 'AETHER', 
-        'category': 'Cosplay'
-    },
-    'CC': {
-        'Christmas candy cane', 
-        'CC (Candy-Cane)', 
-        'Holiday'
-    },
-    'HOWLS': {
-        'desc': "Howl's Moving Castle cosplay", 
-        'trend_col': 'HOWLS', 
-        'category': 'Cosplay'
-    },
-    'SEASONS': {
-        'desc': 'Seasons:', 
-        'trend_col': 'SEASONS', 
-        'category': 'Cottagecore'
-    },
-    'KYO': {
-        'desc': 'Kyo Soma', 
-        'trend_col': 'KYO', 
-        'category': 'Cosplay'
-    },
-    '10-13-STAR': {
-        'desc': 'twin shooting star chain', 
-        'trend_col': '10-13-STAR', 
-        'category': 'Cottagecore'
-    },
+    'AETHER':     {'desc': 'Aether',                       'trend_col': 'AETHER',          'category': 'Cosplay'},
+    'CC':         {'desc': 'Christmas candy cane',         'trend_col': 'CC (Candy-Cane)', 'category': 'Holiday'},
+    'HOWLS':      {'desc': "Howl's Moving Castle cosplay", 'trend_col': 'HOWLS',           'category': 'Cosplay'},
+    'SEASONS':    {'desc': 'Seasons:',                     'trend_col':'SEASONS',          'category': 'Cottagecore'},
+    'KYO':        {'desc': 'Kyo Soma',                     'trend_col': 'KYO',             'category': 'Cosplay'},
+    '10-13-STAR': {'desc': 'twin shooting star chain',     'trend_col': '10-13-STAR',      'category': 'Cottagecore'},
 }
 
 # ---------------------------------------------------------------------
@@ -79,67 +55,55 @@ STANDALONE_PREFIXES = {
 # NOTE: see aliases in DESIGN_ALIASES
 # ---------------------------------------------------------------------
 PRIDE_DESIGNS = {
-    'RAIN6':   ('6-stripe rainbow flag',                 'RAIN6'),
-    'RAIN7':   ('7-stripe rainbow flag',                 'RAIN7'),
-    'RAIN8':   ('8-stripe rainbow flag',                 'RAIN8'),
-    'PROG':    ('progress pride flag',                   'PROG'),
-    'PHILLY':  ('Philadelphia rainbow flag',             'PHILLY'),
-    'LESBO5':  ('5-stripe lesbian flag',                 'LESBO5'),
-    'GAY5':    ('5-stripe gay man flag',                 'GAY5'),
-    'BI3':     ('bisexual (mini) flag',                  'BI3'),
-    'BI5':     ('bisexual (full) flag',                  'BI5'),
-    'PAN':     ('pansexual flag',                        'PAN'),
-    'TRANS3':  ('3-stripe transgender flag',             'TRANS3'),
-    'TRANS5':  ('5-stripe transgender flag',             'TRANS5'),
-    'GQUEER':  ('genderqueer flag',                      'GQUEER'),
-    'GFLUID':  ('genderfluid flag',                      'GFLUID'),
-    'ENBY':    ('nonbinary flag',                        'ENBY'),
-    'INTSEX':  ('intersex flag',                         'INTSEX'),
-    'AROACE':  ('aroace flag',                           'AROACE'),
-    'ORAROACE':  ('oriented aroace flag',                'ORAROACE'),
-    'ACE4':    ('asexual flag',                          'ACE4'),
-    'ACE6':    ('asexual (ace in grace) flag',           'ACE6'),
-    'ARO':     ('aromantic flag',                        'ARO'),
-    'CETERO4': ('ceterosexual flag',                     'CETERO4'),
-    'CETERO5': ('ceterosexual (alt) flag',               'CETERO5'),
-    'MAV':     ('maverique flag',                        'MAV'),
-    'AGEND':   ('agender flag',                          'AGEND'),
-    'BIGEND':  ('bigender flag',                         'BIGEND'),
-    'ANGY':    ('androgyne flag',                        'ANGY'),
-    'GNEUT':   ('gender neutral flag',                   'GNEUT'),
-    'TROIS':   ('neutrois flag',                         'TROIS'),
-    'OMNIS':   ('omnisexual flag',                       'OMNIS'),
-    'MULTIG':   ('multigender flag',                     'MULTIG'),
-    'MULTIS':   ('multisexual flag',                     'MULTIS'),
-    'POLYG':   ('polygender flag',                       'POLYG'),
-    'POLYS':   ('polysexual flag',                       'POLYS'),
-    'BERRI':   ('berrisexual flag',                      'BERRI'),
-    'ALMD':    ('almondsexual flag',                     'ALMD'),
-    'ABRO':    ('abrosexual flag',                       'ABRO'),
-    'QPR':     ('queer-platonic relationships flag',     'QPR'),
-    'GAYBO':   ('gaybian flag',                          'GAYBO'),
-    'GFLUX':   ('genderflux flag',                       'GFLUX'),
-    'ANDRO':   ('androsexual flag',                      'ANDRO'),
-    'GYNE':    ('gynesexual flag',                       'GYNE'),
-    'QUEER':   ('queer flag',                            'QUEER'),
+    'RAIN6':    {'desc': '6-stripe rainbow flag',                 'trend_col': 'RAIN6',    'category': 'Pride'},
+    'RAIN7':    {'desc': '7-stripe rainbow flag',                 'trend_col': 'RAIN7',    'category': 'Pride'},
+    'RAIN8':    {'desc': '8-stripe rainbow flag',                 'trend_col': 'RAIN8',    'category': 'Pride'},
+    'PROG':     {'desc': 'progress pride flag',                   'trend_col': 'PROG',     'category': 'Pride'},
+    'PHILLY':   {'desc': 'Philadelphia rainbow flag',             'trend_col': 'PHILLY',   'category': 'Pride'},
+    'LESBO5':   {'desc': '5-stripe lesbian flag',                 'trend_col': 'LESBO5',   'category': 'Pride'},
+    'GAY5':     {'desc': '5-stripe gay man flag',                 'trend_col': 'GAY5',     'category': 'Pride'},
+    'BI3':      {'desc': 'bisexual (mini) flag',                  'trend_col': 'BI3',      'category': 'Pride'},
+    'BI5':      {'desc': 'bisexual (full) flag',                  'trend_col': 'BI5',      'category': 'Pride'},
+    'PAN':      {'desc': 'pansexual flag',                        'trend_col': 'PAN',      'category': 'Pride'},
+    'TRANS3':   {'desc': '3-stripe transgender flag',             'trend_col': 'TRANS3',   'category': 'Pride'},
+    'TRANS5':   {'desc': '5-stripe transgender flag',             'trend_col': 'TRANS5',   'category': 'Pride'},
+    'GQUEER':   {'desc': 'genderqueer flag',                      'trend_col': 'GQUEER',   'category': 'Pride'},
+    'GFLUID':   {'desc': 'genderfluid flag',                      'trend_col': 'GFLUID',   'category': 'Pride'},
+    'ENBY':     {'desc': 'nonbinary flag',                        'trend_col': 'ENBY',     'category': 'Pride'},
+    'INTSEX':   {'desc': 'intersex flag',                         'trend_col': 'INTSEX',   'category': 'Pride'},
+    'AROACE':   {'desc': 'aroace flag',                           'trend_col': 'AROACE',   'category': 'Pride'},
+    'ORAROACE': {'desc': 'oriented aroace flag',                  'trend_col': 'ORAROACE', 'category': 'Pride'},
+    'ACE4':     {'desc': 'asexual flag',                          'trend_col': 'ACE4',     'category': 'Pride'},
+    'ACE6':     {'desc': 'asexual (ace in grace) flag',           'trend_col': 'ACE6',     'category': 'Pride'},
+    'ARO':      {'desc': 'aromantic flag',                        'trend_col': 'ARO',      'category': 'Pride'},
+    'CETERO4':  {'desc': 'ceterosexual flag',                     'trend_col': 'CETERO4',  'category': 'Pride'},
+    'CETERO5':  {'desc': 'ceterosexual (alt) flag',               'trend_col': 'CETERO5',  'category': 'Pride'},
+    'MAV':      {'desc': 'maverique flag',                        'trend_col': 'MAV',      'category': 'Pride'},
+    'AGEND':    {'desc': 'agender flag',                          'trend_col': 'AGEND',    'category': 'Pride'},
+    'BIGEND':   {'desc': 'bigender flag',                         'trend_col': 'BIGEND',   'category': 'Pride'},
+    'ANGY':     {'desc': 'androgyne flag',                        'trend_col': 'ANGY',     'category': 'Pride'},
+    'GNEUT':    {'desc': 'gender neutral flag',                   'trend_col': 'GNEUT',    'category': 'Pride'},
+    'TROIS':    {'desc': 'neutrois flag',                         'trend_col': 'TROIS',    'category': 'Pride'},
+    'OMNIS':    {'desc': 'omnisexual flag',                       'trend_col': 'OMNIS',    'category': 'Pride'},
+    'MULTIG':   {'desc': 'multigender flag',                      'trend_col': 'MULTIG',   'category': 'Pride'},
+    'MULTIS':   {'desc': 'multisexual flag',                      'trend_col': 'MULTIS',   'category': 'Pride'},
+    'POLYG':    {'desc': 'polygender flag',                       'trend_col': 'POLYG',    'category': 'Pride'},
+    'POLYS':    {'desc': 'polysexual flag',                       'trend_col': 'POLYS',    'category': 'Pride'},
+    'BERRI':    {'desc': 'berrisexual flag',                      'trend_col': 'BERRI',    'category': 'Pride'},
+    'ALMD':     {'desc': 'almondsexual flag',                     'trend_col': 'ALMD',     'category': 'Pride'},
+    'ABRO':     {'desc': 'abrosexual flag',                       'trend_col': 'ABRO',     'category': 'Pride'},
+    'QPR':      {'desc': 'queer-platonic relationships flag',     'trend_col': 'QPR',      'category': 'Pride'},
+    'GAYBO':    {'desc': 'gaybian flag',                          'trend_col': 'GAYBO',    'category': 'Pride'},
+    'GFLUX':    {'desc': 'genderflux flag',                       'trend_col': 'GFLUX',    'category': 'Pride'},
+    'ANDRO':    {'desc': 'androsexual flag',                      'trend_col': 'ANDRO',    'category': 'Pride'},
+    'GYNE':     {'desc': 'gynesexual flag',                       'trend_col': 'GYNE',     'category': 'Pride'},
+    'QUEER':    {'desc': 'queer flag',                            'trend_col': 'QUEER',    'category': 'Pride'},
 }
 
 MISC_DESIGNS = {
-    'USA':     {
-        'desc': 'American flag', 
-        'trend_col': 'USA', 
-        'category': 'Holiday'
-    },
-    'KRIS':    {
-        'desc': 'Kris/Chara shirt inspired', 
-        'trend_col': 'KRIS', 
-        'category': 'Cosplay'
-    },
-    'FRISK':   {
-        'desc': 'Frisk shirt inspired', 
-        'trend_col': 'FRISK', 
-        'category': 'Cosplay'
-    },
+    'USA':     {'desc': 'American flag',             'trend_col': 'USA',   'category': 'Holiday'},
+    'KRIS':    {'desc': 'Kris/Chara shirt inspired', 'trend_col': 'KRIS',  'category': 'Cosplay'},
+    'FRISK':   {'desc': 'Frisk shirt inspired',      'trend_col': 'FRISK', 'category': 'Cosplay'},
 }
 
 # ---------------------------------------------------------------------
@@ -153,12 +117,12 @@ MISC_DESIGNS = {
 # to their new proper name 
 
 PRIDE_ALIASES = {
-    'BI':     ('bisexual (mini) flag',                   'BI3'), # old alias backup
-    'TRANS':  ('5-stripe transgender flag',              'TRANS5'), # old alias backup
-    'ACE':    ('asexual flag',                           'ACE4'), # old alias backup
-    'CETERO': ('ceterosexual flag',                      'CETERO4'), # old alias backup
-    'MULTG':   ('multigender flag',                      'MULTIG'),  # see note above
-    'MULTS':   ('multisexual flag',                      'MULTIS'),  # see note above
+    'BI':     {'desc': 'bisexual (mini) flag',      'trend_col': 'BI3',     'category': 'Pride'},  # old alias backup
+    'TRANS':  {'desc': '5-stripe transgender flag', 'trend_col': 'TRANS5',  'category': 'Pride'},  # old alias backup
+    'ACE':    {'desc': 'asexual flag',              'trend_col': 'ACE4',    'category': 'Pride'},  # old alias backup
+    'CETERO': {'desc': 'ceterosexual flag',         'trend_col': 'CETERO4', 'category': 'Pride'},  # old alias backup
+    'MULTG':  {'desc': 'multigender flag',          'trend_col': 'MULTIG',  'category': 'Pride'},  # see note above
+    'MULTS':  {'desc': 'multisexual flag',          'trend_col': 'MULTIS',  'category': 'Pride'},  # see note above
 }
 
 # ---------------------------------------------------------------------
@@ -166,33 +130,33 @@ PRIDE_ALIASES = {
 # Each is code -> (description, trend column name).
 # ---------------------------------------------------------------------
 SEASON_NAMES = {
-    'WINTER': ('Winter', 'winter'),
-    'SPRING': ('Spring', 'spring'),
-    'SUMMER': ('Summer', 'summer'),
-    'FALL':   ('Fall',   'fall'),
+    'WINTER': {'desc': 'Winter', 'trend_col': 'winter', 'category': 'Cottagecore'},
+    'SPRING': {'desc': 'Spring', 'trend_col': 'spring', 'category': 'Cottagecore'},
+    'SUMMER': {'desc': 'Summer', 'trend_col': 'summer', 'category': 'Cottagecore'},
+    'FALL':   {'desc': 'Fall',   'trend_col': 'fall',   'category': 'Cottagecore'},
 }
 
 AETHER_ELEMENTS = {
-    'ANEMO':   ('anemo',   'ANEMO'),
-    'GEO':     ('geo',     'GEO'),
-    'ELECTRO': ('electro', 'ELECTRO'),
-    'DENDRO':  ('dendro',  'DENDRO'),
-    'HYDRO':   ('hydro',   'HYDRO'),
-    'PYRO':    ('pyro',    'PYRO'),
-    'CRYO':    ('cryo',    'CRYO'),
-    'NONE':    ('none',    'NONE'),
-    'ALL':     ('all',     'ALL'),
+    'ANEMO':   {'desc': 'anemo',   'trend_col': 'ANEMO',   'category': 'Cosplay'},
+    'GEO':     {'desc': 'geo',     'trend_col': 'GEO',     'category': 'Cosplay'},
+    'ELECTRO': {'desc': 'electro', 'trend_col': 'ELECTRO', 'category': 'Cosplay'},
+    'DENDRO':  {'desc': 'dendro',  'trend_col': 'DENDRO',  'category': 'Cosplay'},
+    'HYDRO':   {'desc': 'hydro',   'trend_col': 'HYDRO',   'category': 'Cosplay'},
+    'PYRO':    {'desc': 'pyro',    'trend_col': 'PYRO',    'category': 'Cosplay'},
+    'CRYO':    {'desc': 'cryo',    'trend_col': 'CRYO',    'category': 'Cosplay'},
+    'NONE':    {'desc': 'none',    'trend_col': 'NONE',    'category': 'Cosplay'},
+    'ALL':     {'desc': 'all',     'trend_col': 'ALL',     'category': 'Cosplay'},
 }
 
 CC_COLORS = {
-    'RWG': ('red, white, green', 'RWG'),
-    'RW':  ('red & white',       'RW'),
-    'RG':  ('red & green',       'RG'),
+    'RWG': {'desc': 'red, white, green', 'trend_col': 'RWG', 'category': 'Holiday'},
+    'RW':  {'desc': 'red & white',       'trend_col': 'RW',  'category': 'Holiday'},
+    'RG':  {'desc': 'red & green',       'trend_col': 'RG',  'category': 'Holiday'},
 }
 
 KYO_COLORS = {
-    'RED':   ('red bracelet inspired',   'KYO-Red'),
-    'BLACK': ('black bracelet inspired', 'KYO-Black'),
+    'RED':   {'desc': 'red bracelet inspired',   'trend_col': 'KYO-Red',  'category': 'Cosplay'},
+    'BLACK': {'desc': 'black bracelet inspired', 'trend_col': 'KYO-Black', 'category': 'Cosplay'},
 }
 
 # ---------------------------------------------------------------------
@@ -342,7 +306,9 @@ def group_designs_by_trend_column(code_map, alias_map=None):
     from whichever code is available if no canonical one exists}.
     """
     groups = {}
-    for code, (desc, trend_col) in code_map.items():
+    for code, entry in code_map.items():
+        trend_col = entry['trend_col']
+        desc = entry['desc']
         group = groups.setdefault(trend_col, {'codes': set(), 'canonical': None, 'description': None})
         group['codes'].add(code)
         if code.upper() == trend_col.upper():
@@ -352,7 +318,9 @@ def group_designs_by_trend_column(code_map, alias_map=None):
             group['description'] = desc
 
     if alias_map:
-        for alias_code, (desc, trend_col) in alias_map.items():
+        for alias_code, entry in alias_map.items():
+            trend_col = entry['trend_col']
+            desc = entry['desc']
             group = groups.setdefault(trend_col, {'codes': set(), 'canonical': None, 'description': None})
             group['codes'].add(alias_code)
             if group['description'] is None:
@@ -405,11 +373,11 @@ def resolve_design_category(prefix, design, type=None):
         checkNewFlags.py-shaped gap, not a crash.
       result is a dict, warning is None -- resolved. Shape:
         {'identity': str, 'coarse_identity': str or None,
-         'kind': 'pride' | 'misc', 'description': str}
+         'category': 'pride' | 'misc', 'description': str}
         coarse_identity == identity when there's no finer breakdown
         available (pride/misc designs, HOWLS, 10-13-STAR, TART).
 
-    OPTION A SCOPE NOTE: `kind` is presently a flat 'pride'/'misc' split
+    OPTION A SCOPE NOTE: `category` is presently a flat 'pride'/'misc' split
     derived from which dict the design was found in -- NOT the
     finer holiday/cosplay/fairycore taxonomy Julien wants eventually.
     Every STANDALONE_PREFIXES-sourced identity (TART, HOWLS, 10-13-STAR,
@@ -423,16 +391,17 @@ def resolve_design_category(prefix, design, type=None):
     if type == 'TART':
         return {
             'identity': 'TART', 'coarse_identity': 'TART',
-            'kind': 'misc', 'description': TART_INFO['trend_column'],
+            'category': 'Cosplay', 'description': TART_INFO['trend_column'],
         }, None
 
     if prefix in STANDALONE_PREFIXES:
-        coarse_desc, coarse_col = STANDALONE_PREFIXES[prefix]
+        entry = STANDALONE_PREFIXES[prefix]
+        coarse_desc, coarse_col = entry['desc'], entry['trend_col']
 
         if prefix in ('HOWLS', '10-13-STAR'):
             return {
-                'identity': coarse_col, 'coarse_identity': coarse_col,
-                'kind': 'misc', 'description': coarse_desc,
+                'identity': prefix, 'coarse_identity': entry['trend_col'],
+                'category': entry['category'], 'description': entry['desc'],
             }, None
 
         sub_map = {
@@ -465,17 +434,17 @@ def resolve_design_category(prefix, design, type=None):
             return None, None  # bead-prefixed item with no design token at all -- unusual but not this function's concern to flag; parse_sku already tracks unmatched_design_token separately.
 
         if design in PRIDE_DESIGNS:
-            desc, col = PRIDE_DESIGNS[design]
+            entry = PRIDE_DESIGNS[design]
             return {
-                'identity': col, 'coarse_identity': col,
-                'kind': 'pride', 'description': desc,
+                'identity': design, 'coarse_identity': entry['trend_col'],
+                'kind': entry['category'], 'description': entry['desc'],
             }, None
 
         if design in MISC_DESIGNS:
-            desc, col = MISC_DESIGNS[design]
+            entry = MISC_DESIGNS[design]
             return {
-                'identity': col, 'coarse_identity': col,
-                'kind': 'misc', 'description': desc,
+                'identity': design, 'coarse_identity': entry['trend_col'],
+                'kind': entry['category'], 'description': entry['desc'],
             }, None
 
         return None, (
