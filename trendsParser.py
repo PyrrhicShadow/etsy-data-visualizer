@@ -64,6 +64,7 @@ from collections import defaultdict
 from shopIO import load_valid_sales_rows
 from salesToTrendsGen import parse_sku_row
 from skuVocab import resolve_design_category, FINDINGS, TART_INFO
+from cliPrompts import QuitRequested, prompt_yes_no
 
 
 # ---------------------------------------------------------------------
@@ -359,8 +360,11 @@ def main():
     for w in load_warnings:
         print(f"Warning: {w}")
 
-    fine_raw = input("\nShow fine-grained AETHER/SEASONS/CC sub-designs? (y/n): ").strip().lower()
-    fine_grained = fine_raw in ('y', 'yes')
+    try:
+        fine_grained = prompt_yes_no("\nShow fine-grained AETHER/SEASONS/CC sub-designs? (y/n): ")
+    except QuitRequested:
+        print("\nAborted.")
+        return
 
     top_raw = input("How many top entries per ranking? (Enter for all): ").strip()
     top_n = int(top_raw) if top_raw.isdigit() else None

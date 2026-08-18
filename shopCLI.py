@@ -48,7 +48,7 @@ show you yesterday's data. Interactive contexts also expose a manual
 import sys
 
 from shopIO import load_inventory, load_recipes, load_valid_sales_rows
-from cliPrompts import QuitRequested, prompt_yes_no
+from cliPrompts import QuitRequested, prompt_yes_no, prompt_input
 
 import checkNewFlags
 import recipeGen4B
@@ -58,6 +58,7 @@ import countOrdersDayOfWeek
 import countOrdersSubMonths
 import salesToTrendsGen
 import addSale
+import trendsParser
 
 
 MENU_COMMANDS = ('menu', 'exit', 'quit', 'q')
@@ -86,6 +87,30 @@ def prompt_loop_input(prompt):
     if value.lower() in MENU_COMMANDS:
         raise ReturnToMenu()
     return value
+
+from datetime import datetime
+
+def prompt_optional_date(prompt):
+    """Local wrapper around cliPrompts.prompt_date()'s validation loop,
+    for trendsParser's start/end date bounds -- unlike every other date
+    prompt in this project, either bound here is legitimately optional
+    (open-ended range), so blank input returns None instead of re-
+    prompting. Kept local to shopCLI.py, not promoted to cliPrompts.py --
+    single consumer.
+
+    Returns a raw datetime, not a formatted string: trendsParser.
+    filter_records_by_date() compares directly against each record's
+    datetime, it doesn't write these to CSV, so there's no CSV-format
+    step to apply here the way prompt_date()'s callers need.
+    """
+    while True:
+        raw = prompt_input(prompt)
+        if not raw:
+            return None
+        try:
+            return datetime.strptime(raw, "%m/%d/%Y")
+        except ValueError:
+            print(f"  Could not parse '{raw}' as mm/dd/yyyy -- try again, or leave blank to skip.")
 
 # ---------------------------------------------------------------------
 # Shared, lazily-loaded CSV data
@@ -261,6 +286,32 @@ def ctx_sales_to_trends(data):
         print(f"\n\u2713 Saved to {output_path}")
 
 
+def ctx_trends_parser(data):
+    if _safe_load('PyrrhicSilvaShopSales.csv', lambda: True) is None:
+        return
+    rows, warnings = data.sales_rows(force_reload=True)
+    _print_warnings(warnings)
+
+    try:
+        use_range = prompt_yes_no("\nFilter by date range? (y/n): ")
+        start_date = end_date = None
+        if use_range:
+            start_date = prompt_optional_date("  Start date (mm/dd/yyyy, blank = no lower bound): ")
+            end_date = prompt_optional_date("  End date (mm/dd/yyyy, blank = no upper bound): ")
+
+        fine_grained = prompt_yes_no("Show fine-grained AETHER/SEASONS/CC sub-designs? (y/n): ")
+    except QuitRequested:
+        print("\nCancelled.")
+        return
+
+    top_raw = input("How many top entries per ranking? (Enter for all): ").strip()
+    top_n = int(top_raw) if top_raw.isdigit() else None
+
+    report = trendsParser.build_trends_report(
+        rows, start_date=start_date, end_date=end_date, fine_grained_designs=fine_grained
+    )
+    trendsParser.render_report_cli(report, top_n=top_n)
+
 # ---------------------------------------------------------------------
 # INTERACTIVE contexts (own sub-loop; 'menu'/'exit' returns to main menu)
 # ---------------------------------------------------------------------
@@ -373,8 +424,9 @@ CONTEXTS = [
     ('4', 'Recipe Gen 4B          (generate 4C/6P/8R from 4B)',        ctx_recipe_gen_4b,   True),
     ('5', 'Add Sale               (interactive, one order at a time)', ctx_add_sale,        False),
     ('6', 'Sales -> Trends Generator (vs. reference file, if present)', ctx_sales_to_trends, True),
-    ('7', 'Orders by Day of Week',                                     ctx_day_of_week,     True),
-    ('8', 'Orders by Month Third',                                     ctx_sub_months,      True),
+    ('7', 'Trends Parser          (design/jewelry-type rankings, date filter)', ctx_trends_parser, True),
+    ('8', 'Orders by Day of Week',                                     ctx_day_of_week,     True),
+    ('9', 'Orders by Month Third',                                     ctx_sub_months,      True),
 ]
 
 
