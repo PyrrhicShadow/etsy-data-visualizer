@@ -65,8 +65,8 @@ by design, a cancel/refund row always follows a real order row with
 qty >= 1 for the same order number, so that order number stays in the
 known set regardless. Watch for exceptions here -- if an order was
 recorded ONLY as a cancellation with no qty>=1 row ever entered, it
-would incorrectly show up as "missing." Not solved here; revisit if it
-comes up.
+would correctly show up as "missing", as the original qty >= 1 row 
+would actually be missing in such cases.
 
 QUIT SCOPING (two-tier, deliberately different from a single flat
 convention): 'quit'/'exit'/'q' typed at the top-level "Enter this order
@@ -288,7 +288,6 @@ def prompt_order_info_from_etsy(etsy_row):
     num_skus = prompt_int("Number of unique SKUs in this order: ")
     discount_pct = prompt_float(
         "Discount percent applied at checkout (e.g. 25 for 25%, 0 for none) "
-        "-- Etsy-derived value shown above is a sanity check only, enter what you know is correct: "
     )
 
     share_and_save = prompt_yes_no("Was this a Share & Save order? (y/n): ")
@@ -303,7 +302,7 @@ def prompt_order_info_from_etsy(etsy_row):
     )
 
     sales_tax = prompt_float(
-        "Sales tax paid by customer (Etsy's own Sales Tax field is NOT this -- ignored): $"
+        "Sales tax paid by customer (not seller): $"
     )
 
     etsy_shipping = _safe_float(etsy_row, 'Shipping') or 0.0
@@ -358,12 +357,12 @@ def render_etsy_summary_cli(row):
     if derived_pct is not None:
         print(f"  Etsy-derived discount %: {derived_pct:.1f}%  (sanity check only)")
     print(f"  Order Total (payment amount): ${row.get('Order Total', '')}")
-    print(f"  Shipping (Etsy):   ${row.get('Shipping', '')}  ($0.00 usually means free shipping -- Etsy doesn't report your real postage cost)")
-    print(f"  Sales Tax (Etsy):  ${row.get('Sales Tax', '')}  (NOT what the buyer paid -- ignored)")
+    print(f"  Shipping (Etsy):   ${row.get('Shipping', '')} (amt paid by customer)")
+    print(f"  Sales Tax (Etsy):  ${row.get('Sales Tax', '')}  (amt paid by seller)")
     print(f"  Number of Items:   {row.get('Number of Items', '')}")
     sku_field = (row.get('SKU') or '').strip()
     if sku_field:
-        print(f"  Etsy SKU field (IGNORED -- reference only): {sku_field}")
+        print(f"  Etsy SKU field (reference only): {sku_field}")
 
 
 def render_reconciliation_warnings_cli(warnings):
