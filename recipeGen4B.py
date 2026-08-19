@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Recipe Generator for Pyrrhic Silva Shop
+Recipe Generator for Pyrrhic Silva Crafts
 Translates 4B pride flag recipes to 6P and 8R equivalents
 
 GUI NOTE: translate_recipe() and generate_recipes() now return warnings
@@ -237,7 +237,7 @@ def render_report_cli(report):
 
 def main():
     print("=" * 60)
-    print("RECIPE GENERATOR - Pyrrhic Silva Shop")
+    print("RECIPE GENERATOR - Pyrrhic Silva Crafts")
     print("=" * 60)
 
     print("\nLoading inventory...")

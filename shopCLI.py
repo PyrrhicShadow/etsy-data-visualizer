@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-shopCLI.py - Pyrrhic Silva Shop unified dispatcher
+shopCLI.py - Pyrrhic Silva Crafts unified dispatcher
 
 Single entry point for every read-only reporting/lookup script in this
 project. Pick a context from the menu, it runs, and you're dropped back
@@ -119,8 +119,8 @@ class ShopData:
     def __init__(self):
         self.inventory_path = 'InventoryData.csv'
         self.recipes_path = 'RecipesData.csv'
-        self.sales_path = 'PyrrhicSilvaShopSales.csv'
-        self.trends_path = 'PyrrhicSilvaShopTrends.csv'
+        self.sales_path = 'ShopSales.csv'
+        self.trends_path = 'ShopTrends.csv'
         self._inventory = None
         self._recipes = None
         self._sales_rows = None
@@ -217,16 +217,16 @@ def ctx_recipe_gen_4b(data):
         print("Not saved. Re-run this context after adding more 4B recipes to try again.")
         return
 
-    output_path = input("Output path (or Enter for TempMissingRecipes.csv): ").strip()
+    output_path = input("Output path (or Enter for Local/TempMissingRecipes.csv): ").strip()
     if not output_path:
-        output_path = 'TempMissingRecipes.csv'
+        output_path = 'Local/TempMissingRecipes.csv'
     recipeGen4B.write_recipes_csv(report['recipes'], output_path)
     print(f"\n\u2713 Saved to {output_path}. Copy/paste the rows you want into RecipesData.csv,")
     print("  then run 'Check New Flags' again to confirm the conversion is complete.")
 
 
 def ctx_day_of_week(data):
-    if _safe_load('PyrrhicSilvaShopSales.csv', lambda: True) is None:
+    if _safe_load('ShopSales.csv', lambda: True) is None:
         return
     rows, warnings = data.sales_rows(force_reload=True)
     _print_warnings(warnings)
@@ -235,7 +235,7 @@ def ctx_day_of_week(data):
 
 
 def ctx_sub_months(data):
-    if _safe_load('PyrrhicSilvaShopSales.csv', lambda: True) is None:
+    if _safe_load('ShopSales.csv', lambda: True) is None:
         return
     rows, warnings = data.sales_rows(force_reload=True)
     _print_warnings(warnings)
@@ -279,15 +279,15 @@ def ctx_sales_to_trends(data):
 
         if not save:
             return
-        output_path = input("Output path (or Enter for TempTrendsGenerated.csv): ").strip()
+        output_path = input("Output path (or Enter for Local/TempTrendsGenerated.csv): ").strip()
         if not output_path:
-            output_path = 'TempTrendsGenerated.csv'
+            output_path = 'Local/TempTrendsGenerated.csv'
         salesToTrendsGen.write_trends_csv(report['days'], output_path)
         print(f"\n\u2713 Saved to {output_path}")
 
 
 def ctx_trends_parser(data):
-    if _safe_load('PyrrhicSilvaShopSales.csv', lambda: True) is None:
+    if _safe_load('ShopSales.csv', lambda: True) is None:
         return
     rows, warnings = data.sales_rows(force_reload=True)
     _print_warnings(warnings)
@@ -408,9 +408,9 @@ def ctx_add_sale(data):
             print("Not written. Order discarded.")
             continue
 
-        output_path = input("Output path (or Enter for TempNewSales.csv): ").strip()
+        output_path = input("Output path (or Enter for Local/TempNewSales.csv): ").strip()
         if not output_path:
-            output_path = 'TempNewSales.csv'
+            output_path = 'Local/TempNewSales.csv'
         addSale.write_sales_csv_rows(rows, output_path)
         print(f"\n\u2713 Appended {len(rows)} row(s) to {output_path}")
 
@@ -432,7 +432,7 @@ CONTEXTS = [
 
 def print_menu(data):
     print("\n" + "=" * 60)
-    print("PYRRHIC SILVA SHOP - unified CLI")
+    print("PYRRHIC SILVA CRAFTS - unified CLI")
     print("=" * 60)
     for key, label, _fn, auto_exit in CONTEXTS:
         tag = '' if auto_exit else '  [interactive]'

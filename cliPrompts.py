@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-cliPrompts.py - Pyrrhic Silva Shop
+cliPrompts.py - Pyrrhic Silva Crafts
 
 SINGLE SOURCE OF TRUTH for interactive input() prompt mechanics shared
 across this project's CLI scripts: the quit-command convention, and

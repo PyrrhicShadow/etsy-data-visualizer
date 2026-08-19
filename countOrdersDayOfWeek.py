@@ -1,5 +1,5 @@
 """
-countOrdersDayOfWeek.py - Pyrrhic Silva Shop
+countOrdersDayOfWeek.py - Pyrrhic Silva Crafts
 
 GUI NOTE: compute_day_of_week_counts() returns plain data (a dict plus a
 couple of derived summary values) with zero printing. render_report()
@@ -77,9 +77,9 @@ def render_report_cli(result):
 
 
 def main():
-    sales_path = input("Enter path to sales CSV (or Enter for PyrrhicSilvaShopSales.csv): ").strip()
+    sales_path = input("Enter path to sales CSV (or Enter for ShopSales.csv): ").strip()
     if not sales_path:
-        sales_path = 'PyrrhicSilvaShopSales.csv'
+        sales_path = 'ShopSales.csv'
 
     try:
         rows, warnings = load_valid_sales_rows(sales_path)

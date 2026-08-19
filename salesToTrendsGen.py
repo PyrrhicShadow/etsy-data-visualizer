@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-salesToTrendsGen.py - Pyrrhic Silva Shop
+salesToTrendsGen.py - Pyrrhic Silva Crafts
 
 Reads the raw sales export (one row per line item) and produces a trends CSV
-in the same layout as the hand-tallied PyrrhicSilvaShopTrends.csv:
+in the same layout as the hand-tallied ShopTrends.csv:
 one row per day of sales, one column per bead type / finding / design, plus
 a Total row at the bottom.
 
@@ -559,13 +559,13 @@ def generate_trends_report(sales_path, reference_path=None):
 
 
 def main():
-    sales_path = input("Enter path to sales CSV (or Enter for PyrrhicSilvaShopSales.csv): ").strip()
+    sales_path = input("Enter path to sales CSV (or Enter for ShopSales.csv): ").strip()
     if not sales_path:
-        sales_path = 'PyrrhicSilvaShopSales.csv'
+        sales_path = 'ShopSales.csv'
 
     # Reference file is looked for alongside the sales CSV, same as before.
     reference_path = os.path.join(
-        os.path.dirname(os.path.abspath(sales_path)), 'PyrrhicSilvaShopTrends.csv'
+        os.path.dirname(os.path.abspath(sales_path)), 'ShopTrends.csv'
     )
 
     print(f"\nReading {sales_path} ...")

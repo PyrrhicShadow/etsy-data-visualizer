@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SKU Parser - Pyrrhic Silva Shop (Unified)
+SKU Parser - Pyrrhic Silva Crafts (Unified)
 
 parse_sku(sku) is the single source of truth for decomposing a SKU string.
 It returns a plain dict describing the SKU's structure -- prefix, design,
@@ -290,7 +290,7 @@ def readable_description(sku_or_parsed):
 
 def main():
     print("=" * 60)
-    print("SKU PARSER - Pyrrhic Silva Shop")
+    print("SKU PARSER - Pyrrhic Silva Crafts")
     print("=" * 60)
     print("\nEnter a SKU (or 'quit' to exit):\n")
 

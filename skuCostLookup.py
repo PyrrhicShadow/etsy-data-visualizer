@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Cost Calculator - Pyrrhic Silva Shop (v2)
+Cost Calculator - Pyrrhic Silva Crafts (v2)
 Uses specific_units for all calculations.
 
 Suffix parsing returns a normalized (category, length) pair instead of a
@@ -371,7 +371,7 @@ def format_output(result):
 
 def main():
     print("=" * 60)
-    print("COST CALCULATOR - Pyrrhic Silva Shop")
+    print("COST CALCULATOR - Pyrrhic Silva Crafts")
     print("(Uses specific_units for all calculations)")
     print("=" * 60)
 

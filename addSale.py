@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-addSale.py - Pyrrhic Silva Shop
+addSale.py - Pyrrhic Silva Crafts
 
-Interactive tool to add a new order's line items to PyrrhicSilvaShopSales.csv,
+Interactive tool to add a new order's line items to ShopSales.csv,
 computing every fee/earnings/profit column the same way the hand-tallied
 rows in that file already do.
 
@@ -350,7 +350,7 @@ def verify_payment_amount(rows, order_info, tolerance=0.02):
     }
 
 def write_sales_csv_rows(rows, output_path):
-    """Append (or create) rows in PyrrhicSilvaShopSales.csv's existing
+    """Append (or create) rows in ShopSales.csv's existing
     format: ' $X.XX ' / '25%' style discount strings, and blank cells 
     for fields this script doesn't collect (shipping label ID, ship / 
     arrival dates, transit days, notes).
@@ -446,7 +446,7 @@ def render_preview_cli(rows):
 
 def main():
     print("=" * 60)
-    print("ADD SALE - Pyrrhic Silva Shop")
+    print("ADD SALE - Pyrrhic Silva Crafts")
     print("=" * 60)
 
     inv_path = input("\nEnter path to InventoryData CSV (or Enter for InventoryData.csv): ").strip()

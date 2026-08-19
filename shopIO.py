@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-shopIO.py - Pyrrhic Silva Shop
+shopIO.py - Pyrrhic Silva Crafts
 
 SINGLE SOURCE OF TRUTH for reading the shop's three recurring CSV shapes:
 InventoryData.csv, RecipesData.csv, and the sales export. Every script

@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-trendsParser.py - Pyrrhic Silva Shop
+trendsParser.py - Pyrrhic Silva Crafts
 
 Ranks sales by jewelry type (aggregate, plus breakdown by earring
 finding / necklace length / bracelet type) and by design (Pride flag
 designs vs. everything else), most-to-least popular.
 
 SOURCE FILE NOTE (read before assuming this reads the trends CSV just
-because of the module name): this reads PyrrhicSilvaShopSales.csv, NOT
-PyrrhicSilvaShopTrends.csv. The trends CSV only stores one NK count and
+because of the module name): this reads ShopSales.csv, NOT
+ShopTrends.csv. The trends CSV only stores one NK count and
 one summed Chain(inches) value per day -- it has no per-length totals,
 so a necklace-length ranking cannot be built from it. It also has no
 column at all for DK earrings (skuVocab.FINDINGS['DK']['trend_column']
@@ -339,14 +339,14 @@ def render_report_cli(report, top_n=None):
 
 def main():
     print("=" * 60)
-    print("TRENDS PARSER - Pyrrhic Silva Shop")
-    print("(reads the raw sales CSV, not PyrrhicSilvaShopTrends.csv --")
+    print("TRENDS PARSER - Pyrrhic Silva Crafts")
+    print("(reads the raw sales CSV, not ShopTrends.csv --")
     print(" see this module's docstring for why)")
     print("=" * 60)
 
-    sales_path = input("\nEnter path to sales CSV (or Enter for PyrrhicSilvaShopSales.csv): ").strip()
+    sales_path = input("\nEnter path to sales CSV (or Enter for ShopSales.csv): ").strip()
     if not sales_path:
-        sales_path = 'PyrrhicSilvaShopSales.csv'
+        sales_path = 'ShopSales.csv'
 
     try:
         rows, load_warnings = load_valid_sales_rows(sales_path)

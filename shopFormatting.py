@@ -1,5 +1,5 @@
 """
-shopFormatting.py - Pyrrhic Silva Shop
+shopFormatting.py - Pyrrhic Silva Crafts
 
 SINGLE SOURCE OF TRUTH for the currency, date, and order-ID display/
 export string formats used across this project.

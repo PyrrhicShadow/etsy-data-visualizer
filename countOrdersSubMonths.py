@@ -1,5 +1,5 @@
 """
-countOrdersSubMonths.py - Pyrrhic Silva Shop
+countOrdersSubMonths.py - Pyrrhic Silva Crafts
 
 GUI NOTE: compute_order_ranges() is the reusable piece -- it takes rows
 already loaded by shopIO.load_valid_sales_rows() and returns a plain
@@ -86,9 +86,9 @@ def render_report_cli(result):
 
 
 def main():
-    sales_path = input("Enter path to sales CSV (or Enter for PyrrhicSilvaShopSales.csv): ").strip()
+    sales_path = input("Enter path to sales CSV (or Enter for ShopSales.csv): ").strip()
     if not sales_path:
-        sales_path = 'PyrrhicSilvaShopSales.csv'
+        sales_path = 'ShopSales.csv'
 
     try:
         rows, warnings = load_valid_sales_rows(sales_path)

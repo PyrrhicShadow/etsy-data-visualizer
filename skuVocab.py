@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-skuVocab.py - Pyrrhic Silva Shop
+skuVocab.py - Pyrrhic Silva Crafts
 
 SINGLE SOURCE OF TRUTH for every SKU sub-part code (bead prefixes,
 standalone prefixes, pride-flag/design codes, season/element/color

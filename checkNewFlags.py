@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-checkNewFlags.py - Pyrrhic Silva Shop
+checkNewFlags.py - Pyrrhic Silva Crafts
 
 Scans RecipesData.csv for 4B/4C/6P/8R-[flag] entries and compares the
 flag codes against skuVocab.PRIDE_DESIGNS, across THREE checks:
@@ -243,7 +243,7 @@ def render_report_cli(report, designs=PRIDE_DESIGNS, aliases=PRIDE_ALIASES):
 
 def main():
     print("=" * 60)
-    print("CHECK NEW FLAGS - Pyrrhic Silva Shop")
+    print("CHECK NEW FLAGS - Pyrrhic Silva Crafts")
     print("=" * 60)
 
     rec_path = input("\nEnter path to RecipesData CSV (or Enter for RecipesData.csv): ").strip()
