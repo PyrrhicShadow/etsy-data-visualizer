@@ -1,6 +1,6 @@
 # Etsy Data Visualizer
 
-Take manually sourced data and add it to Etsy's reports to create a single app to view and sort through Etsy sales trends over time (eventually). 
+Take manually sourced data and add it to Etsy's reports to create a single GUI app to view and sort through Etsy sales trends over time (eventually). 
 
 ## Current features 
 
